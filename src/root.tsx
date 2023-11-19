@@ -113,6 +113,7 @@ export default component$(() => {
             <CustomTooltip
               placementStrategy="default"
               preferredPlacement="bottom-start"
+              dialogOffset={60}
             >
               <button q:slot="relative-element">bottom-start</button>
               <div q:slot="message">Bottom start</div>

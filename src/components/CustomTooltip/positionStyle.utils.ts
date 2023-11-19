@@ -207,7 +207,7 @@ export function ensureAdjustXToHaveWidthInsideView(x: number, dialogWidth: numbe
     ? Math.max(x - sizeOutsideRightSide, 0)
     : Math.max(x, 0)
 
-  return adjustedX;
+  return Math.round(adjustedX);
 }
 
 export function ensureAdjustYToHaveHeightInsideView(y: number, dialogHeight: number) {
