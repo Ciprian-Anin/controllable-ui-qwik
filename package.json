@@ -45,6 +45,7 @@
     "eslint-plugin-qwik": "latest",
     "np": "7.6.1",
     "prettier": "3.0.0",
+    "sass": "^1.67.0",
     "typescript": "5.1.6",
     "undici": "5.22.1",
     "vite": "4.4.7",

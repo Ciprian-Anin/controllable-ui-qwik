@@ -1,0 +1,61 @@
+:root {
+  --dialog-offset: 5px;
+}
+
+.QwikUiTooltip-dialog {
+  border: unset;
+  padding: unset;
+  background: transparent;
+  overflow:  hidden;
+}
+
+.QwikUiTooltip-tooltip {
+  display: flex;
+  width: fit-content;
+  max-width: 600px;
+  padding: 4px 8px;
+  border: unset;
+  margin: 0;
+  max-height: calc(100vh - 1px - var(--scrollbar-height));
+  height: 100%;
+
+  overflow-wrap: break-word;
+  font-size: 12px;
+  border-radius: 4px;
+  color: white; 
+  background-color: rgba(97, 97, 97, 0.92);
+}
+
+.QwikUiTooltip-tooltip:first-child {
+  overflow: auto;
+}
+
+.QwikUiTooltip-placement-top-start, 
+.QwikUiTooltip-placement-top, 
+.QwikUiTooltip-placement-top-end {
+  transform: translateY(calc(0px - var(--dialog-offset)));
+}
+
+.QwikUiTooltip-placement-bottom-start, 
+.QwikUiTooltip-placement-bottom, 
+.QwikUiTooltip-placement-bottom-end {
+  transform: translateY(var(--dialog-offset));
+}
+
+.QwikUiTooltip-placement-left-start, 
+.QwikUiTooltip-placement-left,
+.QwikUiTooltip-placement-left-end {
+  transform: translateX(calc(0px - var(--dialog-offset)));
+}
+
+.QwikUiTooltip-placement-right-start, 
+.QwikUiTooltip-placement-right, 
+.QwikUiTooltip-placement-right-end {
+  transform: translateX(var(--dialog-offset));
+}
+
+
+.QwikUiTooltip-relative-element {
+  display: inline-block;
+  // border: 1px solid red;
+}
