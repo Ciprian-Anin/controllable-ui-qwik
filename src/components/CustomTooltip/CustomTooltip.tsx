@@ -2,6 +2,8 @@ import {
   $,
   component$,
   CSSProperties,
+  QwikFocusEvent,
+  QwikMouseEvent,
   Slot,
   useId,
   useSignal,
@@ -40,12 +42,15 @@ const defaultOrderOfPlacementsToBeTried: {
 };
 
 type BaseProps = {
+  // open: boolean; // TODO: add possibility to control from outside the open/close state
+  // onOpen?: () => void;
+  // onClose?: () => void;
   preferredPlacement?: Placement;
   orderOfPlacementsToBeTried?: [
     preferredPlacement: Placement,
     ...restOfPlacements: Placement[],
   ];
-  triggerActions?: ("hover" | "focus" | "touch" | "click")[]; // TODO: ...
+  triggerActions?: ("hover" | "focus" | "click")[];
   dialogOffset?: number; // distance between relative element and tooltip dialog
   closeTimeout?: number; // close timeout in ms
 };
@@ -98,6 +103,8 @@ export const CustomTooltip = component$((props: Props) => {
     ],
     dialogOffset = 5,
     closeTimeout = 150,
+    triggerActions = ["hover", "focus"],
+    // triggerActions = ["click"],
   } = props;
 
   useStyles$(TooltipStyle);
@@ -105,6 +112,7 @@ export const CustomTooltip = component$((props: Props) => {
   const relativeElementRef = useSignal<HTMLElement>();
   const dialogWithBridgeRef = useSignal<HTMLElement>();
   const dialogRef = useSignal<HTMLElement>();
+  const dialogIsOpen = useSignal(false);
   const dialogPositionStyle = useStore<{
     currentPlacement?: Placement;
     value: CSSProperties & {
@@ -218,6 +226,7 @@ export const CustomTooltip = component$((props: Props) => {
     // * (at this moment we don't have the dialog sizes,
     // * and it is not positioned on requested/available placement)
     dialogWithBridgeRef.value?.showPopover();
+    dialogIsOpen.value = true;
 
     await nextTickRender(); // wait for new popover to be showed before
     // computing the available placement location, in order to have its sizes available
@@ -229,16 +238,23 @@ export const CustomTooltip = component$((props: Props) => {
 
   const closeDialog = $(() => {
     dialogWithBridgeRef.value?.hidePopover();
+    dialogIsOpen.value = false;
+
     dialogPositionStyle.currentPlacement = undefined;
     dialogPositionStyle.value = {};
     dialogPositionStyle.maxHeight = "";
     dialogPositionStyle.maxWidth = "";
+
     document.removeEventListener("scroll", positionDialog);
   });
 
-  const scheduleDialogClose = $(() => {
+  const scheduleDialogClose = $(async () => {
     dialogAnimationState.value = "hide";
-    closeDialogTimeoutID.value = setTimeout(closeDialog, closeTimeout);
+    await new Promise<void>((resolve, reject) => {
+      closeDialogTimeoutID.value = setTimeout(() => {
+        closeDialog().then(resolve).catch(reject);
+      }, closeTimeout);
+    });
   });
 
   const cancelDialogClose = $(() => {
@@ -247,12 +263,86 @@ export const CustomTooltip = component$((props: Props) => {
     dialogAnimationState.value = "show";
   });
 
-  useVisibleTask$(({ cleanup }) => {
+  const handleClickOutsideClose = $(async (event: Event) => {
+    if (
+      dialogWithBridgeRef.value !== event.target &&
+      !dialogWithBridgeRef.value?.contains(event.target as Node) &&
+      relativeElementRef.value !== event.target &&
+      !relativeElementRef.value?.contains(event.target as Node)
+    ) {
+      await scheduleDialogClose();
+    }
+  });
+
+  const handleOpenAction = $(async () => {
+    if (dialogAnimationState.value !== "show") {
+      cancelDialogClose();
+
+      await openDialog();
+    }
+  });
+
+  useVisibleTask$(({ track, cleanup }) => {
+    const isDialogOpen = track(() => dialogIsOpen.value);
+
+    if (isDialogOpen && triggerActions.includes("click")) {
+      window.addEventListener("click", handleClickOutsideClose);
+    }
+
+    cleanup(() => {
+      if (triggerActions.includes("click")) {
+        window.removeEventListener("click", handleClickOutsideClose);
+      }
+    });
+  });
+
+  useVisibleTask$(({ track, cleanup }) => {
+    const isDialogOpen = track(() => dialogIsOpen.value);
+
+    if (isDialogOpen) {
+      document.addEventListener("scroll", positionDialog);
+    }
+
     cleanup(() => {
       document.removeEventListener("scroll", positionDialog);
+    });
+  });
+
+  useVisibleTask$(({ cleanup }) => {
+    cleanup(() => {
       clearTimeout(closeDialogTimeoutID.value);
     });
   });
+
+  const handleRelativeElementMouseOrFocusLeave = $(
+    async (
+      event:
+        | QwikMouseEvent<HTMLDivElement, MouseEvent>
+        | QwikFocusEvent<HTMLDivElement>
+    ) => {
+      if (
+        dialogWithBridgeRef.value !== event.relatedTarget &&
+        !dialogWithBridgeRef.value?.contains(event.relatedTarget as Node)
+      ) {
+        await scheduleDialogClose();
+      }
+    }
+  );
+
+  const handleMouseOrFocusLeaveDialog = $(
+    async (
+      event:
+        | QwikMouseEvent<HTMLDivElement, MouseEvent>
+        | QwikFocusEvent<HTMLDivElement>
+    ) => {
+      if (
+        relativeElementRef.value !== event.relatedTarget &&
+        !relativeElementRef.value?.contains(event.relatedTarget as Node)
+      ) {
+        await scheduleDialogClose();
+      }
+    }
+  );
 
   const tooltipId = useId();
 
@@ -263,22 +353,26 @@ export const CustomTooltip = component$((props: Props) => {
         class="QwikUiTooltip-relative-element"
         // @ts-ignore
         popovertarget={tooltipId}
-        onMouseEnter$={async () => {
-          if (dialogAnimationState.value !== "show") {
-            cancelDialogClose();
-
-            await openDialog();
-          }
-          document.addEventListener("scroll", positionDialog);
-        }}
-        onMouseLeave$={async (event) => {
-          if (
-            dialogRef.value !== event.relatedTarget &&
-            !dialogRef.value?.contains(event.relatedTarget as Node)
-          ) {
-            await scheduleDialogClose();
-          }
-        }}
+        onMouseEnter$={
+          triggerActions.includes("hover") ? handleOpenAction : undefined
+        }
+        onMouseLeave$={
+          triggerActions.includes("hover")
+            ? handleRelativeElementMouseOrFocusLeave
+            : undefined
+        }
+        onFocus$={
+          triggerActions.includes("focus") ? handleOpenAction : undefined
+        }
+        onBlur$={
+          triggerActions.includes("focus")
+            ? handleRelativeElementMouseOrFocusLeave
+            : undefined
+        }
+        tabIndex={triggerActions.includes("focus") ? 0 : undefined}
+        onClick$={
+          triggerActions.includes("click") ? handleOpenAction : undefined
+        }
       >
         <Slot name="relative-element" />
       </div>
@@ -303,17 +397,25 @@ export const CustomTooltip = component$((props: Props) => {
           "--close-timeout": `${closeTimeout}ms`,
           maxWidth: dialogPositionStyle.maxWidth,
         }}
-        onMouseEnter$={cancelDialogClose}
-        onMouseLeave$={async (event) => {
-          if (
-            relativeElementRef.value !== event.relatedTarget &&
-            !relativeElementRef.value?.contains(event.relatedTarget as Node)
-          ) {
-            await scheduleDialogClose();
-          }
-        }}
+        onMouseEnter$={
+          triggerActions.includes("hover") ? cancelDialogClose : undefined
+        }
+        onMouseLeave$={
+          triggerActions.includes("hover")
+            ? handleMouseOrFocusLeaveDialog
+            : undefined
+        }
       >
-        <div class="QwikUiTooltip-dialog" ref={dialogRef}>
+        <div
+          class="QwikUiTooltip-dialog"
+          ref={dialogRef}
+          tabIndex={triggerActions.includes("focus") ? 0 : undefined}
+          onFocusout$={
+            triggerActions.includes("focus")
+              ? handleMouseOrFocusLeaveDialog
+              : undefined
+          }
+        >
           <div
             class="QwikUiTooltip-tooltip"
             style={{
