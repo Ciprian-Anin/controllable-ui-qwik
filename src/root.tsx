@@ -1,9 +1,12 @@
-import { component$, useStyles$ } from "@builder.io/qwik";
+import {
+  component$,
+  useStyles$,
+} from '@builder.io/qwik';
 
-import { Counter } from "./components/counter/counter";
-import { CustomTooltip } from "./components/CustomTooltip";
-import { Logo } from "./components/logo/logo";
-import RootStyle from "./Root.scss?inline";
+import { Counter } from './components/counter/counter';
+import { CustomTooltip } from './components/CustomTooltip';
+import { Logo } from './components/logo/logo';
+import RootStyle from './Root.scss?inline';
 
 export default component$(() => {
   useStyles$(RootStyle);
@@ -14,16 +17,103 @@ export default component$(() => {
         <meta charSet="utf-8" />
         <title>Qwik Blank App</title>
       </head>
-      <body style="display: flex; flex-direction: column; align-items: center">
+      <body style="display: flex; flex-direction: column; align-items: start">
         <Logo />
         <Counter />
+        ------
+        <br />
+        ------
+        <br />
+        ------
+        <br />
+        ------
+        <br />
+        ------ ------
+        <br />
+        ------
+        <br />
+        ------
+        <br />
+        ------
+        <br />
+        ------ ------
+        <br />
+        ------
+        <br />
+        ------
+        <br />
+        ------
+        <br />
+        ------
+        <br />
+        ------
+        <br />
+        ------
+        <br />
+        ------
+        <br />
+        ------
+        <br />
+        ------
+        <br />
+        ------
+        <br />
+        ------
+        <br />
+        ------
+        <br />
+        ------ ------
+        <br />
+        ------
+        <br />
+        ------
+        <br />
+        ------
+        <br />
+        ------ ------
+        <br />
+        ------
+        <br />
+        ------
+        <br />
+        ------
+        <br />
+        ------ ------
+        <br />
+        ------
+        <br />
+        ------
+        <br />
+        ------
+        <br />
+        ------
+        <br />
+        ------
+        <br />
+        ------
+        <br />
+        ------
+        <br />
+        ------
+        <br />
+        ------
+        <br />
+        ------
+        <br />
+        ------
+        <br />
+        ------
+        <br />
+        ------
         <div class="Root-demo-tooltip">
           <div class="top-section">
             <CustomTooltip
               preferredPlacement="top-start"
               placementStrategy="default"
             >
-              <button q:slot="relative-element">top-start</button>
+              <button q:slot="relative-element" tabIndex={-1}>
+                top-start
+              </button>
               <div q:slot="message">
                 Top start - --- a very long long message --- a very long long
                 message ---a very long long message ---a very long long message
@@ -56,7 +146,9 @@ export default component$(() => {
               placementStrategy="default"
             >
               <button q:slot="relative-element">left-start</button>
-              <div q:slot="message">Left start</div>
+              <div q:slot="message">
+                Left start -- a very long long message --- a very long long
+              </div>
             </CustomTooltip>
             <CustomTooltip
               preferredPlacement="left"
@@ -81,7 +173,18 @@ export default component$(() => {
               placementStrategy="default"
             >
               <button q:slot="relative-element">left-end</button>
-              <div q:slot="message">Left end</div>
+              <div q:slot="message">
+                Left end --- a very long long message --- a very long long
+                message ---a very long long message ---a very long long message
+                ---a very long long message ---a very long long message ---a
+                very long long message ---a very long long message ---a very
+                long long message ---a very long long message ---a very long
+                long message ---a very long long message ---a very long long
+                message ---a very long long message ---a very long long message
+                ---a very long long message ---a very long long message ---a
+                very long long message ---a very long long message ---a very
+                long long message
+              </div>
             </CustomTooltip>
           </div>
 
@@ -91,7 +194,18 @@ export default component$(() => {
               placementStrategy="default"
             >
               <button q:slot="relative-element">right-start</button>
-              <div q:slot="message">Right start</div>
+              <div q:slot="message">
+                Right start - --- a very long long message --- a very long long
+                message ---a very long long message ---a very long long message
+                ---a very long long message ---a very long long message ---a
+                very long long message ---a very long long message ---a very
+                long long message ---a very long long message ---a very long
+                long message ---a very long long message ---a very long long
+                message ---a very long long message ---a very long long message
+                ---a very long long message ---a very long long message ---a
+                very long long message ---a very long long message ---a very
+                long long message
+              </div>
             </CustomTooltip>
             <CustomTooltip
               preferredPlacement="right"
@@ -105,7 +219,18 @@ export default component$(() => {
               placementStrategy="default"
             >
               <button q:slot="relative-element">right-end</button>
-              <div q:slot="message">Right end</div>
+              <div q:slot="message">
+                Right end --- a very long long message --- a very long long
+                message ---a very long long message ---a very long long message
+                ---a very long long message ---a very long long message ---a
+                very long long message ---a very long long message ---a very
+                long long message ---a very long long message ---a very long
+                long message ---a very long long message ---a very long long
+                message ---a very long long message ---a very long long message
+                ---a very long long message ---a very long long message ---a
+                very long long message ---a very long long message ---a very
+                long long message
+              </div>
             </CustomTooltip>
           </div>
 
@@ -151,6 +276,86 @@ export default component$(() => {
           </div>
         </div>
         ------
+        <br />
+        ------
+        <br />
+        ------
+        <br />
+        ------
+        <br />
+        ------
+        <br />
+        ------
+        <br />
+        ------
+        <br /> ------
+        <br />
+        ------
+        <br />
+        ------
+        <br />
+        ------
+        <br />
+        ------ ------
+        <br />
+        ------
+        <br />
+        ------
+        <br />
+        ------
+        <br />
+        ------ ------
+        <br />
+        ------
+        <br />
+        ------
+        <br />
+        ------
+        <br />
+        ------
+        <br />
+        ------
+        <br />
+        ------ ------
+        <br />
+        <br />
+        ------
+        <br />
+        ------
+        <br />
+        ------
+        <br />
+        ------
+        <br />
+        ------
+        <br />
+        ------ ------
+        <br />
+        ------
+        <br />
+        ------
+        <br />
+        ------ ------
+        <br />
+        ------
+        <br />
+        ------
+        <br />
+        ------
+        <br />
+        ------
+        <br />
+        ------
+        <br />
+        ------
+        <br />
+        ------
+        <br />
+        ------
+        <br />
+        ------
+        <br />
+        ------ ------
         <br />
         ------
         <br />

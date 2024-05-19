@@ -16,6 +16,7 @@ import {
   getAvailablePlacementFromTheOnesToBeTried,
   getDialogAvailablePositionConsideringKeepingCurrentPlacement,
 } from "./availablePosition.utils";
+import { TooltipArrow } from "./components/TooltipArrow";
 import TooltipStyle from "./CustomTooltip.scss?inline";
 import { getDialogPositionStyle } from "./positionStyle.utils";
 import { Placement } from "./types";
@@ -30,12 +31,15 @@ const defaultOrderOfPlacementsToBeTried: {
   "top-start": ["top-start", "bottom-start", "left", "right"],
   top: ["top", "bottom", "left", "right"],
   "top-end": ["top-end", "bottom-end", "left", "right"],
+
   "left-start": ["left-start", "right-start", "top", "bottom"],
   left: ["left", "right", "top", "bottom"],
   "left-end": ["left-end", "right-end", "top", "bottom"],
+
   "right-start": ["right-start", "left-start", "top", "bottom"],
   right: ["right", "left", "top", "bottom"],
   "right-end": ["right-end", "left-end", "top", "bottom"],
+
   "bottom-start": ["bottom-start", "top-start", "left", "right"],
   bottom: ["bottom", "top", "left", "right"],
   "bottom-end": ["bottom-end", "top-end", "left", "right"],
@@ -53,6 +57,10 @@ type BaseProps = {
   triggerActions?: ("hover" | "focus" | "click")[];
   dialogOffset?: number; // distance between relative element and tooltip dialog
   closeTimeout?: number; // close timeout in ms
+  arrow?: boolean;
+  // slots?: {
+  //   arrow?: Component<{}>;
+  // };
 };
 
 /**
@@ -101,17 +109,21 @@ export const CustomTooltip = component$((props: Props) => {
     orderOfPlacementsToBeTried = defaultOrderOfPlacementsToBeTried[
       preferredPlacement
     ],
-    dialogOffset = 5,
+    // dialogOffset = 5,
     closeTimeout = 150,
     triggerActions = ["hover", "focus"],
     // triggerActions = ["click"],
+    arrow = true,
+    dialogOffset = 18,
   } = props;
+  const arrowSize = arrow ? 12 : 0;
 
   useStyles$(TooltipStyle);
 
   const relativeElementRef = useSignal<HTMLElement>();
   const dialogWithBridgeRef = useSignal<HTMLElement>();
   const dialogRef = useSignal<HTMLElement>();
+
   const dialogIsOpen = useSignal(false);
   const dialogPositionStyle = useStore<{
     currentPlacement?: Placement;
@@ -149,14 +161,14 @@ export const CustomTooltip = component$((props: Props) => {
               dialogElement: dialogRef.value,
               relativeElement: relativeElementRef.value,
               currentPlacement: dialogPositionStyle.currentPlacement,
-              dialogOffset,
+              dialogOffset: 0,
               ...props.dialogMinMaxSizes,
             })
           : getAvailablePlacementFromTheOnesToBeTried(
               orderOfPlacementsToBeTried,
               dialogRef.value,
               relativeElementRef.value,
-              dialogOffset
+              0 // dialogOffset
             );
 
       if (availablePosition.type === "partial-size-available") {
@@ -173,6 +185,7 @@ export const CustomTooltip = component$((props: Props) => {
           case "bottom-start":
           case "bottom":
           case "bottom-end":
+            // Note: maxHeight will be set on .QwikUiTooltip-tooltip
             dialogPositionStyle.maxHeight = `${
               availablePosition.availableSize - dialogOffset
             }px`;
@@ -183,9 +196,8 @@ export const CustomTooltip = component$((props: Props) => {
           case "right-start":
           case "right":
           case "right-end":
-            dialogPositionStyle.maxWidth = `${
-              availablePosition.availableSize /*  - dialogOffset */
-            }px`;
+            // Note: maxWidth will be set on .QwikUiTooltip-dialog-with-bridge
+            dialogPositionStyle.maxWidth = `${availablePosition.availableSize}px`;
             break;
         }
         await nextTickRender(); // wait for new width/height to be rendered,
@@ -233,6 +245,8 @@ export const CustomTooltip = component$((props: Props) => {
     // * (showing it => making it to occupy space on page)
 
     await positionDialog();
+    await positionDialog(); // call a second time to make sure that the size of dialog is computed properly
+    // (the first time when we call positionDialog the browser doesn't compute the height/width of dialog properly)
     dialogAnimationState.value = "show";
   });
 
@@ -393,9 +407,36 @@ export const CustomTooltip = component$((props: Props) => {
         data-dialog-placement={preferredPlacement}
         style={{
           ...dialogPositionStyle.value,
-          "--dialog-offset": `${dialogOffset}px`,
-          "--close-timeout": `${closeTimeout}ms`,
           maxWidth: dialogPositionStyle.maxWidth,
+          "--dialog-offset": `${dialogOffset - arrowSize}px`,
+          "--close-timeout": `${closeTimeout}ms`,
+          ...(arrow
+            ? {
+                "--arrow-size": `${arrowSize}px`,
+                ...(() => {
+                  const { x, y, width, height } =
+                    relativeElementRef.value?.getBoundingClientRect() ?? {};
+
+                  return {
+                    "--relative-x": `${x}px`,
+                    "--relative-y": `${y}px`,
+                    "--relative-width": `${width}px`,
+                    "--relative-height": `${height}px`,
+                  };
+                })(),
+                ...(() => {
+                  const { x, y, width, height } =
+                    dialogRef.value?.getBoundingClientRect() ?? {};
+
+                  return {
+                    "--dialog-x": `${x}px`,
+                    "--dialog-y": `${y}px`,
+                    "--dialog-width": `${width}px`,
+                    "--dialog-height": `${height}px`,
+                  };
+                })(),
+              }
+            : {}),
         }}
         onMouseEnter$={
           triggerActions.includes("hover") ? cancelDialogClose : undefined
@@ -407,7 +448,7 @@ export const CustomTooltip = component$((props: Props) => {
         }
       >
         <div
-          class="QwikUiTooltip-dialog"
+          class="QwikUiTooltip-inner-dialog-with-bridge"
           ref={dialogRef}
           tabIndex={triggerActions.includes("focus") ? 0 : undefined}
           onFocusout$={
@@ -416,13 +457,16 @@ export const CustomTooltip = component$((props: Props) => {
               : undefined
           }
         >
-          <div
-            class="QwikUiTooltip-tooltip"
-            style={{
-              maxHeight: dialogPositionStyle.maxHeight,
-            }}
-          >
-            <Slot name="message" />
+          <div class="QwikUiTooltip-animated-inner-dialog-with-bridge">
+            <div
+              class="QwikUiTooltip-tooltip"
+              style={{
+                maxHeight: dialogPositionStyle.maxHeight,
+              }}
+            >
+              <Slot name="message" />
+            </div>
+            {arrow && <TooltipArrow arrowSize={arrowSize} />}
           </div>
         </div>
       </div>
