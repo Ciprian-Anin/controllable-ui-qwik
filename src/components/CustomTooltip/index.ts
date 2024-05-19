@@ -1,1 +1,4 @@
-export { CustomTooltip } from './CustomTooltip';
+export {
+  CustomTooltip,
+  type Props as CustomTooltipProps,
+} from './CustomTooltip';

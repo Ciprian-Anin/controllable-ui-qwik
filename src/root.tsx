@@ -1,12 +1,9 @@
-import {
-  component$,
-  useStyles$,
-} from '@builder.io/qwik';
+import { component$, useStyles$ } from "@builder.io/qwik";
 
-import { Counter } from './components/counter/counter';
-import { CustomTooltip } from './components/CustomTooltip';
-import { Logo } from './components/logo/logo';
-import RootStyle from './Root.scss?inline';
+import { Counter } from "./components/counter/counter";
+import { Logo } from "./components/logo/logo";
+import { TooltipDemo } from "./demo/TooltipDemo/TooltipDemo";
+import RootStyle from "./Root.scss?inline";
 
 export default component$(() => {
   useStyles$(RootStyle);
@@ -107,7 +104,7 @@ export default component$(() => {
         ------
         <div class="Root-demo-tooltip">
           <div class="top-section">
-            <CustomTooltip
+            <TooltipDemo
               preferredPlacement="top-start"
               placementStrategy="default"
             >
@@ -126,22 +123,22 @@ export default component$(() => {
                 very long long message ---a very long long message ---a very
                 long long message
               </div>
-            </CustomTooltip>
-            <CustomTooltip preferredPlacement="top" placementStrategy="default">
+            </TooltipDemo>
+            <TooltipDemo preferredPlacement="top" placementStrategy="default">
               <button q:slot="relative-element">top</button>
               <div q:slot="message">Top</div>
-            </CustomTooltip>
-            <CustomTooltip
+            </TooltipDemo>
+            <TooltipDemo
               preferredPlacement="top-end"
               placementStrategy="default"
             >
               <button q:slot="relative-element">top-end</button>
               <div q:slot="message">Top end</div>
-            </CustomTooltip>
+            </TooltipDemo>
           </div>
 
           <div class="left-section">
-            <CustomTooltip
+            <TooltipDemo
               preferredPlacement="left-start"
               placementStrategy="default"
             >
@@ -149,11 +146,8 @@ export default component$(() => {
               <div q:slot="message">
                 Left start -- a very long long message --- a very long long
               </div>
-            </CustomTooltip>
-            <CustomTooltip
-              preferredPlacement="left"
-              placementStrategy="default"
-            >
+            </TooltipDemo>
+            <TooltipDemo preferredPlacement="left" placementStrategy="default">
               <button q:slot="relative-element">left</button>
               <div q:slot="message">
                 Left --- a very long long message --- a very long long message
@@ -167,8 +161,8 @@ export default component$(() => {
                 long long message ---a very long long message ---a very long
                 long message
               </div>
-            </CustomTooltip>
-            <CustomTooltip
+            </TooltipDemo>
+            <TooltipDemo
               preferredPlacement="left-end"
               placementStrategy="default"
             >
@@ -185,11 +179,11 @@ export default component$(() => {
                 very long long message ---a very long long message ---a very
                 long long message
               </div>
-            </CustomTooltip>
+            </TooltipDemo>
           </div>
 
           <div class="right-section">
-            <CustomTooltip
+            <TooltipDemo
               preferredPlacement="right-start"
               placementStrategy="default"
             >
@@ -206,15 +200,12 @@ export default component$(() => {
                 very long long message ---a very long long message ---a very
                 long long message
               </div>
-            </CustomTooltip>
-            <CustomTooltip
-              preferredPlacement="right"
-              placementStrategy="default"
-            >
+            </TooltipDemo>
+            <TooltipDemo preferredPlacement="right" placementStrategy="default">
               <button q:slot="relative-element">right</button>
               <div q:slot="message">Right</div>
-            </CustomTooltip>
-            <CustomTooltip
+            </TooltipDemo>
+            <TooltipDemo
               preferredPlacement="right-end"
               placementStrategy="default"
             >
@@ -231,19 +222,19 @@ export default component$(() => {
                 very long long message ---a very long long message ---a very
                 long long message
               </div>
-            </CustomTooltip>
+            </TooltipDemo>
           </div>
 
           <div class="bottom-section">
-            <CustomTooltip
+            <TooltipDemo
               placementStrategy="default"
               preferredPlacement="bottom-start"
               dialogOffset={60}
             >
               <button q:slot="relative-element">bottom-start</button>
               <div q:slot="message">Bottom start</div>
-            </CustomTooltip>
-            <CustomTooltip
+            </TooltipDemo>
+            <TooltipDemo
               placementStrategy="considerKeepingCurrentPlacement"
               preferredPlacement="bottom"
               dialogMinMaxSizes={{
@@ -265,14 +256,14 @@ export default component$(() => {
                 long long message ---a very long long message ---a very long
                 long message
               </div>
-            </CustomTooltip>
-            <CustomTooltip
+            </TooltipDemo>
+            <TooltipDemo
               preferredPlacement="bottom-end"
               placementStrategy="default"
             >
               <button q:slot="relative-element">bottom-end</button>
               <div q:slot="message">Bottom end</div>
-            </CustomTooltip>
+            </TooltipDemo>
           </div>
         </div>
         ------

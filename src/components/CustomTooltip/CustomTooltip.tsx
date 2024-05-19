@@ -2,8 +2,10 @@ import {
   $,
   component$,
   CSSProperties,
+  QRL,
   QwikFocusEvent,
   QwikMouseEvent,
+  Signal,
   Slot,
   useId,
   useSignal,
@@ -22,7 +24,7 @@ import { getDialogPositionStyle } from "./positionStyle.utils";
 import { Placement } from "./types";
 import { nextTickRender } from "./utils";
 
-const defaultOrderOfPlacementsToBeTried: {
+export const defaultOrderOfPlacementsToBeTried: {
   [key in Placement]: [
     preferredPlacement: Placement,
     ...restOfPlacements: Placement[],
@@ -46,9 +48,9 @@ const defaultOrderOfPlacementsToBeTried: {
 };
 
 type BaseProps = {
-  // open: boolean; // TODO: add possibility to control from outside the open/close state
-  // onOpen?: () => void;
-  // onClose?: () => void;
+  open: Signal<boolean>;
+  onOpen$?: QRL<() => void>;
+  onClose$?: QRL<() => void>;
   preferredPlacement?: Placement;
   orderOfPlacementsToBeTried?: [
     preferredPlacement: Placement,
@@ -58,9 +60,6 @@ type BaseProps = {
   dialogOffset?: number; // distance between relative element and tooltip dialog
   closeTimeout?: number; // close timeout in ms
   arrow?: boolean;
-  // slots?: {
-  //   arrow?: Component<{}>;
-  // };
 };
 
 /**
@@ -77,7 +76,7 @@ type BaseProps = {
  *   > (we make sure to override the maximum size in case the available space is smaller than the dialog size)
 
  */
-type KeepCurrentPlacementStrategyProps = BaseProps & {
+export type KeepCurrentPlacementStrategyProps = BaseProps & {
   placementStrategy: "considerKeepingCurrentPlacement";
   dialogMinMaxSizes?: {
     dialogMaxHeight?: number;
@@ -95,7 +94,7 @@ export type DefaultStrategyProps = BaseProps & {
   placementStrategy: "default";
 };
 
-type Props = DefaultStrategyProps | KeepCurrentPlacementStrategyProps;
+export type Props = DefaultStrategyProps | KeepCurrentPlacementStrategyProps;
 
 /**
  * @prop `orderOfPlacementsToBeTried`:
@@ -105,6 +104,9 @@ type Props = DefaultStrategyProps | KeepCurrentPlacementStrategyProps;
  */
 export const CustomTooltip = component$((props: Props) => {
   const {
+    open,
+    onOpen$,
+    onClose$,
     preferredPlacement = "bottom-start",
     orderOfPlacementsToBeTried = defaultOrderOfPlacementsToBeTried[
       preferredPlacement
@@ -124,7 +126,7 @@ export const CustomTooltip = component$((props: Props) => {
   const dialogWithBridgeRef = useSignal<HTMLElement>();
   const dialogRef = useSignal<HTMLElement>();
 
-  const dialogIsOpen = useSignal(false);
+  const dialogIsOpenLocalState = useSignal(open.value);
   const dialogPositionStyle = useStore<{
     currentPlacement?: Placement;
     value: CSSProperties & {
@@ -238,7 +240,7 @@ export const CustomTooltip = component$((props: Props) => {
     // * (at this moment we don't have the dialog sizes,
     // * and it is not positioned on requested/available placement)
     dialogWithBridgeRef.value?.showPopover();
-    dialogIsOpen.value = true;
+    dialogIsOpenLocalState.value = true;
 
     await nextTickRender(); // wait for new popover to be showed before
     // computing the available placement location, in order to have its sizes available
@@ -252,7 +254,7 @@ export const CustomTooltip = component$((props: Props) => {
 
   const closeDialog = $(() => {
     dialogWithBridgeRef.value?.hidePopover();
-    dialogIsOpen.value = false;
+    dialogIsOpenLocalState.value = false;
 
     dialogPositionStyle.currentPlacement = undefined;
     dialogPositionStyle.value = {};
@@ -284,20 +286,28 @@ export const CustomTooltip = component$((props: Props) => {
       relativeElementRef.value !== event.target &&
       !relativeElementRef.value?.contains(event.target as Node)
     ) {
-      await scheduleDialogClose();
+      onClose$?.();
     }
   });
 
   const handleOpenAction = $(async () => {
-    if (dialogAnimationState.value !== "show") {
+    onOpen$?.();
+  });
+
+  useVisibleTask$(async ({ track }) => {
+    const shouldDialogOpen = track(() => open.value);
+
+    if (shouldDialogOpen) {
       cancelDialogClose();
 
       await openDialog();
+    } else {
+      await scheduleDialogClose();
     }
   });
 
   useVisibleTask$(({ track, cleanup }) => {
-    const isDialogOpen = track(() => dialogIsOpen.value);
+    const isDialogOpen = track(() => dialogIsOpenLocalState.value);
 
     if (isDialogOpen && triggerActions.includes("click")) {
       window.addEventListener("click", handleClickOutsideClose);
@@ -311,7 +321,7 @@ export const CustomTooltip = component$((props: Props) => {
   });
 
   useVisibleTask$(({ track, cleanup }) => {
-    const isDialogOpen = track(() => dialogIsOpen.value);
+    const isDialogOpen = track(() => dialogIsOpenLocalState.value);
 
     if (isDialogOpen) {
       document.addEventListener("scroll", positionDialog);
@@ -338,7 +348,7 @@ export const CustomTooltip = component$((props: Props) => {
         dialogWithBridgeRef.value !== event.relatedTarget &&
         !dialogWithBridgeRef.value?.contains(event.relatedTarget as Node)
       ) {
-        await scheduleDialogClose();
+        onClose$?.();
       }
     }
   );
@@ -353,7 +363,7 @@ export const CustomTooltip = component$((props: Props) => {
         relativeElementRef.value !== event.relatedTarget &&
         !relativeElementRef.value?.contains(event.relatedTarget as Node)
       ) {
-        await scheduleDialogClose();
+        onClose$?.();
       }
     }
   );
@@ -439,7 +449,12 @@ export const CustomTooltip = component$((props: Props) => {
             : {}),
         }}
         onMouseEnter$={
-          triggerActions.includes("hover") ? cancelDialogClose : undefined
+          triggerActions.includes("hover")
+            ? $(async () => {
+                onOpen$?.(); // emit open to parent to make sure it will have open state also
+                await cancelDialogClose();
+              })
+            : undefined
         }
         onMouseLeave$={
           triggerActions.includes("hover")
