@@ -1,6 +1,47 @@
 button {
-  height: 100px;
-  width: 100px;
+  min-width: 64px;
+  padding: 5px 15px;
+
+  background-color: transparent;
+  border: 1px solid rgba(25, 118, 210, 0.5);
+  color: rgb(25, 118, 210);
+  border-radius: 4px;
+  text-decoration: none;
+  font-family: Roboto, Helvetica, Arial, sans-serif;
+  font-weight: 500;
+  font-size: 0.875rem;
+  line-height: 1.75;
+  letter-spacing: 0.02857em;
+
+  &:hover {
+    background-color: rgba(25, 118, 210, 0.04);
+    border: 1px solid rgb(25, 118, 210);
+  }
+}
+
+html {
+  font-family: Roboto, Helvetica, Arial, sans-serif;
+  // font-weight: 500;
+
+  h1 {
+    color: hsl(215, 15%, 12%);
+    font-size: 1.625rem;
+    line-height: 1.5;
+    letter-spacing: 0.1px;
+    font-weight: 600;
+    font-family:
+      "General Sans",
+      -apple-system,
+      BlinkMacSystemFont,
+      "Segoe UI",
+      Roboto,
+      "Helvetica Neue",
+      Arial,
+      sans-serif,
+      "Apple Color Emoji",
+      "Segoe UI Emoji",
+      "Segoe UI Symbol";
+  }
 }
 
 * {
@@ -11,13 +52,18 @@ button {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
 
+  button {
+    height: 100px;
+    width: 100px;
+  }
+
   .top-section {
     display: flex;
     justify-content: space-between;
     width: 100%;
     grid-column: 2 / span 3;
   }
-  
+
   .bottom-section {
     display: flex;
     justify-content: space-between;
@@ -33,7 +79,7 @@ button {
     height: 100%;
     grid-row: 2 / span 3;
   }
-  
+
   .right-section {
     display: flex;
     flex-direction: column;
@@ -42,5 +88,31 @@ button {
     grid-column: -2;
     grid-row: 2 / span 3;
   }
-  
+}
+
+.QwikTooltipDemo-rootContainer {
+  .QwikTooltipDemo-html-example {
+    .QwikUiTooltip-tooltip {
+      background: #f5f5f9;
+      color: rgba(0, 0, 0, 0.87);
+      max-width: 220;
+      font-size: 16px;
+      border: 1px solid #dadde9;
+    }
+
+    .QwikUiTooltip-arrow {
+      color: #dadde9;
+
+      svg {
+        filter: none;
+      }
+    }
+  }
+}
+
+.QwikTooltipDemo-grid {
+  button {
+    height: 100px;
+    width: 100px;
+  }
 }

@@ -3,8 +3,6 @@ import {
   component$,
   CSSProperties,
   QRL,
-  QwikFocusEvent,
-  QwikMouseEvent,
   Signal,
   Slot,
   useId,
@@ -22,7 +20,7 @@ import { TooltipArrow } from "./components/TooltipArrow";
 import TooltipStyle from "./CustomTooltip.scss?inline";
 import { getDialogPositionStyle } from "./positionStyle.utils";
 import { Placement } from "./types";
-import { nextTickRender } from "./utils";
+import { getScrollableContainer, nextTickRender } from "./utils";
 
 export const defaultOrderOfPlacementsToBeTried: {
   [key in Placement]: [
@@ -57,27 +55,44 @@ type BaseProps = {
     ...restOfPlacements: Placement[],
   ];
   triggerActions?: ("hover" | "focus" | "click")[];
-  dialogOffset?: number; // distance between relative element and tooltip dialog
-  closeTimeout?: number; // close timeout in ms
+  /**
+   * Distance between relative element and tooltip dialog
+   */
+  dialogOffset?: number;
+  /**
+   * Open timeout in ms
+   */
+  openTimeout?: number;
+  /**
+   * Close timeout in ms
+   */
+  closeTimeout?: number;
   arrow?: boolean;
+  /**
+   * Scrollable container is the one use
+   * to track scroll event and position dialog while scrolling inside it.
+   */
+  scrollableContainer?: HTMLElement;
+  tooltipClass?: string;
+  tooltipRootClass?: string;
 };
 
-/**
- * Keep current placement of dialog as time as it remains in
- * min & max sizes boundaries.
- * 
- *  @prop `dialogMinMaxSizes`:
- *   > In case we need to keep current position, we will use maximum & minimum sizes
- *   > of dialog to check if it fits in current placement, without going over its minimum sizes.
- *   > In case we don't have minimum size available for current placement,
- *   > than will be tried next place from `orderOfPlacementsToBeTried`.
- *
- *   > Maximum size is used to make sure to not have a bigger maximum size on dialog popover.
- *   > (we make sure to override the maximum size in case the available space is smaller than the dialog size)
-
- */
 export type KeepCurrentPlacementStrategyProps = BaseProps & {
+  /**
+   * Keep current placement of dialog as time as it remains in
+   * min & max sizes boundaries.
+   */
   placementStrategy: "considerKeepingCurrentPlacement";
+  /**
+   * `dialogMinMaxSizes`:
+   *   > In case we need to keep current position, we will use maximum & minimum sizes
+   *   > of dialog to check if it fits in current placement, without going over its minimum sizes.
+   *   > In case we don't have minimum size available for current placement,
+   *   > than will be tried next place from `orderOfPlacementsToBeTried`.
+   *
+   *   > Maximum size is used to make sure to not have a bigger maximum size on dialog popover.
+   *   > (we make sure to override the maximum size in case the available space is smaller than the dialog size)
+   */
   dialogMinMaxSizes?: {
     dialogMaxHeight?: number;
     dialogMinHeight?: number;
@@ -112,13 +127,18 @@ export const CustomTooltip = component$((props: Props) => {
       preferredPlacement
     ],
     // dialogOffset = 5,
+    openTimeout = 100,
     closeTimeout = 150,
     triggerActions = ["hover", "focus"],
     // triggerActions = ["click"],
     arrow = true,
     dialogOffset = 18,
+    scrollableContainer,
+    tooltipRootClass,
+    tooltipClass,
   } = props;
   const arrowSize = arrow ? 12 : 0;
+  const tooltipId = useId();
 
   useStyles$(TooltipStyle);
 
@@ -137,7 +157,8 @@ export const CustomTooltip = component$((props: Props) => {
     maxHeight: string;
     maxWidth: string;
   }>({ currentPlacement: undefined, value: {}, maxHeight: "", maxWidth: "" });
-  const closeDialogTimeoutID = useSignal<number>();
+  const closeDialogTimeoutID = useSignal<number | undefined>();
+  const openDialogTimeoutID = useSignal<number | undefined>();
   const dialogAnimationState = useSignal<"show" | "hide" | "initial">(
     "initial"
   );
@@ -222,55 +243,99 @@ export const CustomTooltip = component$((props: Props) => {
         "--scrollbar-height": `${
           window.innerHeight - document.documentElement.clientHeight
         }px`,
-        visibility: "visible",
+        // visibility: "visible",
       };
     }
   });
 
-  const openDialog = $(async () => {
-    dialogPositionStyle.value = {
-      ...dialogPositionStyle.value,
-      visibility: "hidden",
-    };
+  const scheduleDialogOpen = $(async () => {
+    // ! check again to make sure we open dialog just if external
+    // ! state specify now that the dialog should be opened
+    // This check is needed because due to asynchronously downloading
+    // the function, it might be downloaded later than scheduleDialogClose
+    // an in that case close would take place before scheduleDialogOpen,
+    // and this will end up, having dialog open, even if external state
+    // specify that it should be closed
+    if (open.value) {
+      dialogPositionStyle.value = {
+        ...dialogPositionStyle.value,
+        visibility: "hidden",
+      };
 
-    await nextTickRender(); // wait for dialog to have `visibility: hidden` set
-    // before showing it
-    // This is important in order to avoid the display of it on a position
-    // inappropriate with requested/available placement
-    // * (at this moment we don't have the dialog sizes,
-    // * and it is not positioned on requested/available placement)
-    dialogWithBridgeRef.value?.showPopover();
-    dialogIsOpenLocalState.value = true;
+      await new Promise<void>((resolve, reject) => {
+        openDialogTimeoutID.value = setTimeout(async () => {
+          // ! check again to make sure we open dialog just if external
+          // ! state specify now that the dialog should be opened
+          if (open.value) {
+            try {
+              await nextTickRender(); // wait for dialog to have `visibility: hidden` set
+              // before showing it
+              // This is important in order to avoid the display of it on a position
+              // inappropriate with requested/available placement
+              // * (at this moment we don't have the dialog sizes,
+              // * and it is not positioned on requested/available placement)
 
-    await nextTickRender(); // wait for new popover to be showed before
-    // computing the available placement location, in order to have its sizes available
-    // * (showing it => making it to occupy space on page)
+              dialogWithBridgeRef.value?.showPopover();
+              dialogIsOpenLocalState.value = true;
 
-    await positionDialog();
-    await positionDialog(); // call a second time to make sure that the size of dialog is computed properly
-    // (the first time when we call positionDialog the browser doesn't compute the height/width of dialog properly)
-    dialogAnimationState.value = "show";
+              await nextTickRender(); // wait for new popover to be showed before
+              // computing the available placement location, in order to have its sizes available
+              // * (showing it => making it to occupy space on page)
+
+              await positionDialog();
+              await positionDialog(); // call a second time to make sure that the size of dialog is computed properly
+              // (the first time when we call positionDialog the browser doesn't compute the height/width of dialog properly)
+              dialogPositionStyle.value = {
+                ...dialogPositionStyle.value,
+                visibility: "visible",
+              };
+              dialogAnimationState.value = "show";
+              resolve();
+            } catch {
+              reject();
+            }
+          }
+        }, openTimeout);
+      });
+    }
   });
 
   const closeDialog = $(() => {
-    dialogWithBridgeRef.value?.hidePopover();
-    dialogIsOpenLocalState.value = false;
+    // ! check again to make sure we close dialog just if external
+    // ! state specify now that the dialog should be closed
+    if (!open.value) {
+      dialogWithBridgeRef.value?.hidePopover();
+      dialogIsOpenLocalState.value = false;
 
-    dialogPositionStyle.currentPlacement = undefined;
-    dialogPositionStyle.value = {};
-    dialogPositionStyle.maxHeight = "";
-    dialogPositionStyle.maxWidth = "";
+      dialogPositionStyle.currentPlacement = undefined;
+      dialogPositionStyle.value = {};
+      dialogPositionStyle.maxHeight = "";
+      dialogPositionStyle.maxWidth = "";
 
-    document.removeEventListener("scroll", positionDialog);
+      const scrollableContainerElement =
+        getScrollableContainer(scrollableContainer);
+      scrollableContainerElement.removeEventListener("scroll", positionDialog);
+    }
   });
 
   const scheduleDialogClose = $(async () => {
+    // check again to make sure we close dialog just if external
+    // state specify now that the dialog should be closed
+    if (!open.value) {
+      dialogAnimationState.value = "hide";
+
+      await new Promise<void>((resolve, reject) => {
+        closeDialogTimeoutID.value = setTimeout(() => {
+          closeDialog().then(resolve).catch(reject);
+        }, closeTimeout);
+      });
+    }
+  });
+
+  const cancelDialogOpen = $(() => {
+    clearTimeout(openDialogTimeoutID.value);
+    openDialogTimeoutID.value = undefined;
     dialogAnimationState.value = "hide";
-    await new Promise<void>((resolve, reject) => {
-      closeDialogTimeoutID.value = setTimeout(() => {
-        closeDialog().then(resolve).catch(reject);
-      }, closeTimeout);
-    });
   });
 
   const cancelDialogClose = $(() => {
@@ -290,20 +355,27 @@ export const CustomTooltip = component$((props: Props) => {
     }
   });
 
-  const handleOpenAction = $(async () => {
+  const handleOpenAction = $(() => {
     onOpen$?.();
   });
 
-  useVisibleTask$(async ({ track }) => {
+  useVisibleTask$(async ({ track, cleanup }) => {
     const shouldDialogOpen = track(() => open.value);
 
     if (shouldDialogOpen) {
-      cancelDialogClose();
-
-      await openDialog();
+      await cancelDialogClose();
+      await scheduleDialogOpen();
     } else {
-      await scheduleDialogClose();
+      await cancelDialogOpen();
+      if (dialogIsOpenLocalState) {
+        await scheduleDialogClose();
+      }
     }
+
+    cleanup(async () => {
+      await cancelDialogClose();
+      await cancelDialogOpen();
+    });
   });
 
   useVisibleTask$(({ track, cleanup }) => {
@@ -323,42 +395,28 @@ export const CustomTooltip = component$((props: Props) => {
   useVisibleTask$(({ track, cleanup }) => {
     const isDialogOpen = track(() => dialogIsOpenLocalState.value);
 
+    const scrollableContainerElement =
+      getScrollableContainer(scrollableContainer);
     if (isDialogOpen) {
-      document.addEventListener("scroll", positionDialog);
+      scrollableContainerElement.addEventListener("scroll", positionDialog);
     }
 
     cleanup(() => {
-      document.removeEventListener("scroll", positionDialog);
+      scrollableContainerElement.removeEventListener("scroll", positionDialog);
     });
   });
 
-  useVisibleTask$(({ cleanup }) => {
-    cleanup(() => {
-      clearTimeout(closeDialogTimeoutID.value);
-    });
-  });
-
-  const handleRelativeElementMouseOrFocusLeave = $(
-    async (
-      event:
-        | QwikMouseEvent<HTMLDivElement, MouseEvent>
-        | QwikFocusEvent<HTMLDivElement>
-    ) => {
-      if (
-        dialogWithBridgeRef.value !== event.relatedTarget &&
-        !dialogWithBridgeRef.value?.contains(event.relatedTarget as Node)
-      ) {
-        onClose$?.();
-      }
+  const handleRelativeElementMouseOrFocusLeave = $((event: MouseEvent) => {
+    if (
+      dialogWithBridgeRef.value !== event.relatedTarget &&
+      !dialogWithBridgeRef.value?.contains(event.relatedTarget as Node)
+    ) {
+      onClose$?.();
     }
-  );
+  });
 
   const handleMouseOrFocusLeaveDialog = $(
-    async (
-      event:
-        | QwikMouseEvent<HTMLDivElement, MouseEvent>
-        | QwikFocusEvent<HTMLDivElement>
-    ) => {
+    async (event: MouseEvent | FocusEvent) => {
       if (
         relativeElementRef.value !== event.relatedTarget &&
         !relativeElementRef.value?.contains(event.relatedTarget as Node)
@@ -367,8 +425,6 @@ export const CustomTooltip = component$((props: Props) => {
       }
     }
   );
-
-  const tooltipId = useId();
 
   return (
     <div>
@@ -402,6 +458,7 @@ export const CustomTooltip = component$((props: Props) => {
       </div>
       <div
         class={[
+          tooltipRootClass,
           "QwikUiTooltip-dialog-with-bridge",
           dialogPositionStyle.currentPlacement &&
             `QwikUiTooltip-placement-${dialogPositionStyle.currentPlacement}`,
@@ -474,7 +531,7 @@ export const CustomTooltip = component$((props: Props) => {
         >
           <div class="QwikUiTooltip-animated-inner-dialog-with-bridge">
             <div
-              class="QwikUiTooltip-tooltip"
+              class={["QwikUiTooltip-tooltip", tooltipClass]}
               style={{
                 maxHeight: dialogPositionStyle.maxHeight,
               }}
