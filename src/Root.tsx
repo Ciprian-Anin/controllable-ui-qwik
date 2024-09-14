@@ -1,10 +1,14 @@
-import { component$, useSignal, useStyles$ } from "@builder.io/qwik";
+import {
+  component$,
+  useSignal,
+  useStyles$,
+} from '@builder.io/qwik';
 
-import { Logo } from "./components/logo/logo";
-import { TooltipDemo } from "./demo/TooltipDemo/TooltipDemo";
-import { TooltipWithCloseActionDemo } from "./demo/TooltipWithCloseActionDemo";
-import RootStyle from "./Root.scss?inline";
-import { TableWithTooltipsDemo } from "./TableWithTooltipsDemo";
+import { Logo } from './components/logo/logo';
+import { TooltipDemo } from './demo/TooltipDemo/TooltipDemo';
+import { TooltipWithCloseActionDemo } from './demo/TooltipWithCloseActionDemo';
+import RootStyle from './Root.scss?inline';
+import { TableWithTooltipsDemo } from './TableWithTooltipsDemo';
 
 const placements = [
   "top-start",
@@ -32,7 +36,7 @@ export default component$(() => {
   return (
     <>
       <head>
-        <meta charSet="utf-8" />
+        <meta charset="utf-8" />
         <title>Qwik Blank App</title>
       </head>
       <body
