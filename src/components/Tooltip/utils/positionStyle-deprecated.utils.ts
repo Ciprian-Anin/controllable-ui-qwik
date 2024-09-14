@@ -1,6 +1,6 @@
 import { CSSProperties } from '@builder.io/qwik';
 
-import { Placement } from './types';
+import { Placement } from '../types';
 import {
   getDocumentHeight,
   getDocumentWidth,
@@ -17,13 +17,13 @@ export function getBottomEndPositionStyle({
   const dialogElementRect = dialogElement.getBoundingClientRect();
 
   return ({
-    top: `${bottom}px`,
-    left: `${ensureAdjustXToHaveWidthInsideView(
-      right - dialogElementRect.width,
-      dialogElementRect.width
-    )}px`,
+    top: "0",
     right: "auto",
     bottom: "auto",
+    left: "0",
+    transformOrigin: "center top",
+    transform: `translate3d(${right - dialogElementRect.width
+      }px, ${bottom}px, 0px)`
   } as const) satisfies CSSProperties;
 }
 
@@ -38,31 +38,29 @@ export function getBottomPositionStyle({
   const dialogElementRect = dialogElement.getBoundingClientRect();
 
   return ({
-    top: `${bottom}px`,
-    left: `${ensureAdjustXToHaveWidthInsideView(
-      x + width / 2 - dialogElementRect.width / 2,
-      dialogElementRect.width
-    )}px`,
+    top: "0",
     right: "auto",
     bottom: "auto",
+    left: `${-dialogElementRect.width / 2}px`,
+    transformOrigin: "center top",
+    transform: `translate3d(${x + width / 2}px, ${bottom}px, 0px)`
   } as const) satisfies CSSProperties;
 }
 
 export function getBottomStartPositionStyle({
   relativeElement,
-  dialogElement,
 }: {
-  relativeElement: HTMLElement,
-  dialogElement: HTMLElement
+  relativeElement: HTMLElement;
 }) {
   const { x, bottom } = relativeElement.getBoundingClientRect();
-  const dialogElementRect = dialogElement.getBoundingClientRect();
 
   return ({
-    top: `${bottom}px`,
-    left: `${ensureAdjustXToHaveWidthInsideView(x, dialogElementRect.width)}px`,
+    top: "0",
     right: "auto",
     bottom: "auto",
+    left: "0",
+    transformOrigin: "center top",
+    transform: `translate3d(${x}px, ${bottom}px, 0px)`
   } as const) satisfies CSSProperties;
 }
 
@@ -77,13 +75,12 @@ export function getRightEndPositionStyle({
   const dialogElementRect = dialogElement.getBoundingClientRect();
 
   return ({
-    top: `${ensureAdjustYToHaveHeightInsideView(
-      bottom - dialogElementRect.height,
-      dialogElementRect.height
-    )}px`,
-    left: `${right}px`,
+    top: "0",
     right: "auto",
-    bottom: "auto",
+    bottom: `auto`,
+    left: "0",
+    transform: `translate3d(${right}px, ${bottom - dialogElementRect.height
+      }px, 0px)`
   } as const) satisfies CSSProperties;
 }
 
@@ -98,31 +95,28 @@ export function getRightPositionStyle({
   const dialogElementRect = dialogElement.getBoundingClientRect();
 
   return ({
-    top: `${ensureAdjustYToHaveHeightInsideView(
-      y + height / 2 - dialogElementRect.height / 2,
-      dialogElementRect.height
-    )}px`,
-    left: `${right}px`,
+    top: `${-dialogElementRect.height / 2}px`,
     right: "auto",
-    bottom: "auto",
+    bottom: `auto`,
+    left: "0",
+    transform: `translate3d(${right}px, ${y + height / 2}px, 0px)`
   } as const) satisfies CSSProperties;
 }
 
 export function getRightStartPositionStyle({
   relativeElement,
-  dialogElement,
 }: {
-  relativeElement: HTMLElement,
-  dialogElement: HTMLElement
+  relativeElement: HTMLElement
+
 }) {
-  const { right, y } = relativeElement.getBoundingClientRect();
-  const dialogElementRect = dialogElement.getBoundingClientRect();
+  const { x, y, width } = relativeElement.getBoundingClientRect();
 
   return ({
-    top: `${ensureAdjustYToHaveHeightInsideView(y, dialogElementRect.height)}px`,
-    left: `${right}px`,
+    top: "0",
     right: "auto",
     bottom: "auto",
+    left: "0",
+    transform: `translate3d(${x + width}px, ${y}px, 0px)`
   } as const) satisfies CSSProperties;
 }
 
@@ -137,10 +131,11 @@ export function getLeftEndPositionStyle({
   const dialogElementRect = dialogElement.getBoundingClientRect();
 
   return ({
-    top: `${ensureAdjustYToHaveHeightInsideView(bottom - dialogElementRect.height, dialogElementRect.height)}px`,
-    left: `${x - dialogElementRect.width}px`,
-    right: "auto",
+    top: "0",
+    right: "0",
     bottom: "auto",
+    left: "auto",
+    transform: `translate3d(-${getDocumentWidth() - x}px, ${bottom - dialogElementRect.height}px, 0px)`
   } as const) satisfies CSSProperties;
 }
 
@@ -155,31 +150,28 @@ export function getLeftPositionStyle({
   const dialogElementRect = dialogElement.getBoundingClientRect();
 
   return ({
-    top: `${ensureAdjustYToHaveHeightInsideView(
-      y + height / 2 - dialogElementRect.height / 2,
-      dialogElementRect.height
-    )}px`,
-    left: `${x - dialogElementRect.width}px`,
-    right: "auto",
-    bottom: "auto",
+    top: `${-dialogElementRect.height / 2}px`,
+    right: "0",
+    bottom: `auto`,
+    left: "auto",
+    transform: `translate3d(-${getDocumentWidth() - x}px, ${y + height / 2
+      }px, 0px)`
   } as const) satisfies CSSProperties;
 }
 
 export function getLeftStartPositionStyle({
   relativeElement,
-  dialogElement,
 }: {
   relativeElement: HTMLElement,
-  dialogElement: HTMLElement
 }) {
   const { x, y } = relativeElement.getBoundingClientRect();
-  const dialogElementRect = dialogElement.getBoundingClientRect();
 
   return ({
-    top: `${ensureAdjustYToHaveHeightInsideView(y, dialogElementRect.height)}px`,
-    left: `${x - dialogElementRect.width}px`,
-    right: "auto",
+    top: "0",
+    right: "0",
     bottom: "auto",
+    left: "auto",
+    transform: `translate3d(-${getDocumentWidth() - x}px, ${y}px, 0px)`
   } as const) satisfies CSSProperties;
 }
 
@@ -194,29 +186,13 @@ export function getTopEndPositionStyle({
   const dialogElementRect = dialogElement.getBoundingClientRect();
 
   return ({
-    top: `${y - dialogElementRect.height}px`,
-    left: `${ensureAdjustXToHaveWidthInsideView(right - dialogElementRect.width, dialogElementRect.width)}px`,
+    top: "auto",
     right: "auto",
-    bottom: "auto",
+    bottom: "0",
+    left: "0",
+    transformOrigin: "left bottom",
+    transform: `translate3d(${right - dialogElementRect.width}px, -${getDocumentHeight() - y}px, 0px)`
   } as const) satisfies CSSProperties;
-}
-
-export function ensureAdjustXToHaveWidthInsideView(x: number, dialogWidth: number) {
-  const sizeOutsideRightSide = (x + dialogWidth) - getDocumentWidth();
-  const adjustedX = sizeOutsideRightSide > 0
-    ? Math.max(x - sizeOutsideRightSide, 0)
-    : Math.max(x, 0)
-
-  return Math.round(adjustedX);
-}
-
-export function ensureAdjustYToHaveHeightInsideView(y: number, dialogHeight: number) {
-  const sizeOutside = (y + dialogHeight) - getDocumentHeight();
-  const adjustedY = sizeOutside > 0
-    ? Math.max(y - sizeOutside, 0)
-    : Math.max(y, 0)
-
-  return adjustedY;
 }
 
 
@@ -230,11 +206,16 @@ export function getTopStartPositionStyle({
   const { x, y } = relativeElement.getBoundingClientRect();
   const dialogElementRect = dialogElement.getBoundingClientRect()
 
+  const sizeOutside = (x + dialogElementRect.width) - getDocumentWidth();
+  const adjustedX = sizeOutside > 0 ? Math.max(0, x - sizeOutside) : x
+
   return ({
-    top: `${y - dialogElementRect.height}px`,
-    left: `${ensureAdjustXToHaveWidthInsideView(x, dialogElementRect.width)}px`,
+    top: "auto",
     right: "auto",
-    bottom: "auto",
+    bottom: "0",
+    left: "0",
+    transformOrigin: "center bottom",
+    transform: `translate3d(${adjustedX}px, -${getDocumentHeight() - y}px, 0px)`
   } as const) satisfies CSSProperties;
 }
 
@@ -245,17 +226,17 @@ export function getTopPositionStyle({
   dialogElement: HTMLElement,
   relativeElement: HTMLElement
 }) {
-  const { x, y, width } = relativeElement.getBoundingClientRect();
+  const relativeElementRect = relativeElement.getBoundingClientRect();
   const dialogElementRect = dialogElement.getBoundingClientRect();
 
   return ({
-    top: `${y - dialogElementRect.height}px`,
-    left: `${ensureAdjustXToHaveWidthInsideView(
-      x + width / 2 - dialogElementRect.width / 2,
-      dialogElementRect.width
-    )}px`,
+    top: "auto",
     right: "auto",
-    bottom: "auto",
+    bottom: "0",
+    left: `${-dialogElementRect.width / 2}px`,
+    transformOrigin: "center bottom",
+    transform: `translate3d(${relativeElementRect.x + relativeElementRect.width / 2
+      }px, -${getDocumentHeight() - relativeElementRect.y}px, 0px)`
   } as const) satisfies CSSProperties;
 }
 
@@ -293,7 +274,6 @@ export function getDialogPositionStyle(
       });
     case "bottom-start":
       return getBottomStartPositionStyle({
-        dialogElement,
         relativeElement,
       });
 
@@ -310,7 +290,6 @@ export function getDialogPositionStyle(
       });
     case "left-start":
       return getLeftStartPositionStyle({
-        dialogElement,
         relativeElement,
       });
 
@@ -327,7 +306,6 @@ export function getDialogPositionStyle(
       });
     case "right-start":
       return getRightStartPositionStyle({
-        dialogElement,
         relativeElement,
       });
 

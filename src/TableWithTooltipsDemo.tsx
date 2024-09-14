@@ -25,7 +25,7 @@ export const TableWithTooltipsDemo = component$(() => {
                   <TooltipDemo
                     placementStrategy="default"
                     preferredPlacement="top"
-                    openTimeout={200}
+                    enterDelay={200}
                     scrollableContainer={scrollableContainerRef.value}
                   >
                     <div
@@ -35,7 +35,7 @@ export const TableWithTooltipsDemo = component$(() => {
                       Cell {row * 10 + col + 1}
                     </div>
                     <span q:slot="message">
-                      <p color="inherit">Tooltip with HTML</p>
+                      <p>Tooltip with HTML</p>
                       <em>{"And here's"}</em> <b>{"some"}</b>{" "}
                       <u>{"amazing content"}</u>. {"It's very engaging. Right?"}
                     </span>

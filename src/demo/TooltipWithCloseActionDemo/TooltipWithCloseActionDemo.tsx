@@ -1,10 +1,10 @@
 import { $, component$, useSignal } from "@builder.io/qwik";
 
-import { CustomTooltip } from "../../components/CustomTooltip";
+import { Tooltip } from "../../components/Tooltip";
 import {
   DefaultStrategyProps,
   KeepCurrentPlacementStrategyProps,
-} from "../../components/CustomTooltip/CustomTooltip";
+} from "../../components/Tooltip/Tooltip";
 
 export const TooltipWithCloseActionDemo = component$(
   (
@@ -23,12 +23,12 @@ export const TooltipWithCloseActionDemo = component$(
     });
 
     return (
-      <CustomTooltip
+      <Tooltip
         {...props}
         open={dialogIsOpen}
         onOpen$={handleOpen$}
         onClose$={handleClose$}
-        closeTimeout={500}
+        leaveDelay={500}
       >
         <button q:slot="relative-element">HTML</button>
         <span q:slot="message">
@@ -60,7 +60,7 @@ export const TooltipWithCloseActionDemo = component$(
             engaging. Right?
           </p>
         </span>
-      </CustomTooltip>
+      </Tooltip>
     );
   }
 );

@@ -1,6 +1,6 @@
 {
-  "name": "my-qwik-library-name",
-  "version": "0.0.1",
+  "name": "@controllable-ui/qwik-tooltip",
+  "version": "1.0.0",
   "description": "Create a reusable Qwik component library",
   "main": "./lib/index.qwik.mjs",
   "qwik": "./lib/index.qwik.mjs",

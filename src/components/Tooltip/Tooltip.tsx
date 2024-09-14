@@ -12,15 +12,19 @@ import {
   useVisibleTask$,
 } from "@builder.io/qwik";
 
+import { TooltipArrow } from "./components/TooltipArrow";
+import TooltipStyle from "./Tooltip.scss?inline";
+import { Placement } from "./types";
 import {
   getAvailablePlacementFromTheOnesToBeTried,
   getDialogAvailablePositionConsideringKeepingCurrentPlacement,
-} from "./availablePosition.utils";
-import { TooltipArrow } from "./components/TooltipArrow";
-import TooltipStyle from "./CustomTooltip.scss?inline";
-import { getDialogPositionStyle } from "./positionStyle.utils";
-import { Placement } from "./types";
-import { getScrollableContainer, nextTickRender } from "./utils";
+} from "./utils/availablePosition.utils";
+import { getDialogPositionStyle } from "./utils/positionStyle.utils";
+import {
+  getElementVisibleBoundingClientRectInsideScrollableContainer,
+  getScrollableContainer,
+  nextTickRender,
+} from "./utils/utils";
 
 export const defaultOrderOfPlacementsToBeTried: {
   [key in Placement]: [
@@ -60,17 +64,17 @@ type BaseProps = {
    */
   dialogOffset?: number;
   /**
-   * Open timeout in ms
+   * Open delay in ms
    */
-  openTimeout?: number;
+  enterDelay?: number;
   /**
-   * Close timeout in ms
+   * Close delay in ms
    */
-  closeTimeout?: number;
+  leaveDelay?: number;
   arrow?: boolean;
   /**
-   * Scrollable container is the one use
-   * to track scroll event and position dialog while scrolling inside it.
+   * Scrollable container is the one used to track scroll event
+   * and position dialog while scrolling inside it.
    */
   scrollableContainer?: HTMLElement;
   tooltipClass?: string;
@@ -117,7 +121,7 @@ export type Props = DefaultStrategyProps | KeepCurrentPlacementStrategyProps;
  *   > the preferred placement, we will try to position it in the rest
  *   > of placements. The first placement with enough space will be the chosen one.
  */
-export const CustomTooltip = component$((props: Props) => {
+export const Tooltip = component$((props: Props) => {
   const {
     open,
     onOpen$,
@@ -126,13 +130,12 @@ export const CustomTooltip = component$((props: Props) => {
     orderOfPlacementsToBeTried = defaultOrderOfPlacementsToBeTried[
       preferredPlacement
     ],
-    // dialogOffset = 5,
-    openTimeout = 100,
-    closeTimeout = 150,
+    dialogOffset = 5,
+    enterDelay = 100,
+    leaveDelay = 150,
     triggerActions = ["hover", "focus"],
     // triggerActions = ["click"],
-    arrow = true,
-    dialogOffset = 18,
+    arrow = false,
     scrollableContainer,
     tooltipRootClass,
     tooltipClass,
@@ -149,11 +152,7 @@ export const CustomTooltip = component$((props: Props) => {
   const dialogIsOpenLocalState = useSignal(open.value);
   const dialogPositionStyle = useStore<{
     currentPlacement?: Placement;
-    value: CSSProperties & {
-      transform?: string;
-      inset?: string;
-      transformOrigin?: string;
-    };
+    value: CSSProperties;
     maxHeight: string;
     maxWidth: string;
   }>({ currentPlacement: undefined, value: {}, maxHeight: "", maxWidth: "" });
@@ -238,12 +237,48 @@ export const CustomTooltip = component$((props: Props) => {
           availablePosition,
           dialogWithBridgeRef.value, // dialogWithBridgeRef have the bridge in place in this point
           // so we can properly compute the position, taking into account the bridge
-          relativeElementRef.value
+          relativeElementRef.value,
+          scrollableContainer
         ),
         "--scrollbar-height": `${
           window.innerHeight - document.documentElement.clientHeight
         }px`,
         // visibility: "visible",
+      };
+
+      await nextTickRender(); // wait for the dialog to be rendered on the computed placement
+
+      dialogPositionStyle.value = {
+        ...dialogPositionStyle.value,
+        ...(arrow
+          ? {
+              ...(() => {
+                const { x, y, width, height } =
+                  getElementVisibleBoundingClientRectInsideScrollableContainer(
+                    relativeElementRef.value,
+                    getScrollableContainer(scrollableContainer)
+                  );
+
+                return {
+                  "--relative-x": `${x}px`,
+                  "--relative-y": `${y}px`,
+                  "--relative-width": `${width}px`,
+                  "--relative-height": `${height}px`,
+                };
+              })(),
+              ...(() => {
+                const { x, y, width, height } =
+                  dialogRef.value.getBoundingClientRect() ?? {};
+
+                return {
+                  "--dialog-x": `${x}px`,
+                  "--dialog-y": `${y}px`,
+                  "--dialog-width": `${width}px`,
+                  "--dialog-height": `${height}px`,
+                };
+              })(),
+            }
+          : {}),
       };
     }
   });
@@ -275,27 +310,35 @@ export const CustomTooltip = component$((props: Props) => {
               // * (at this moment we don't have the dialog sizes,
               // * and it is not positioned on requested/available placement)
 
-              dialogWithBridgeRef.value?.showPopover();
-              dialogIsOpenLocalState.value = true;
+              const positionDialogAndMakeItVisible = new ResizeObserver(
+                async () => {
+                  try {
+                    await positionDialog();
+                    await positionDialog(); // call a second time to make sure that the size of dialog is computed properly
+                    // (the first time when we call positionDialog the browser doesn't compute the height/width of dialog properly)
+                    dialogPositionStyle.value = {
+                      ...dialogPositionStyle.value,
+                      visibility: "visible",
+                    };
+                    dialogAnimationState.value = "show";
+                    resolve();
+                    positionDialogAndMakeItVisible.disconnect();
+                  } catch {
+                    reject();
+                  }
+                }
+              );
 
-              await nextTickRender(); // wait for new popover to be showed before
-              // computing the available placement location, in order to have its sizes available
-              // * (showing it => making it to occupy space on page)
-
-              await positionDialog();
-              await positionDialog(); // call a second time to make sure that the size of dialog is computed properly
-              // (the first time when we call positionDialog the browser doesn't compute the height/width of dialog properly)
-              dialogPositionStyle.value = {
-                ...dialogPositionStyle.value,
-                visibility: "visible",
-              };
-              dialogAnimationState.value = "show";
-              resolve();
+              if (dialogRef.value) {
+                positionDialogAndMakeItVisible.observe(dialogRef.value);
+                dialogWithBridgeRef.value?.showPopover();
+                dialogIsOpenLocalState.value = true;
+              }
             } catch {
               reject();
             }
           }
-        }, openTimeout);
+        }, enterDelay);
       });
     }
   });
@@ -312,8 +355,7 @@ export const CustomTooltip = component$((props: Props) => {
       dialogPositionStyle.maxHeight = "";
       dialogPositionStyle.maxWidth = "";
 
-      const scrollableContainerElement =
-        getScrollableContainer(scrollableContainer);
+      const scrollableContainerElement = scrollableContainer ?? document;
       scrollableContainerElement.removeEventListener("scroll", positionDialog);
     }
   });
@@ -327,21 +369,25 @@ export const CustomTooltip = component$((props: Props) => {
       await new Promise<void>((resolve, reject) => {
         closeDialogTimeoutID.value = setTimeout(() => {
           closeDialog().then(resolve).catch(reject);
-        }, closeTimeout);
+        }, leaveDelay);
       });
     }
   });
 
   const cancelDialogOpen = $(() => {
-    clearTimeout(openDialogTimeoutID.value);
-    openDialogTimeoutID.value = undefined;
-    dialogAnimationState.value = "hide";
+    if (openDialogTimeoutID.value !== undefined) {
+      clearTimeout(openDialogTimeoutID.value);
+      openDialogTimeoutID.value = undefined;
+      dialogAnimationState.value = "hide";
+    }
   });
 
   const cancelDialogClose = $(() => {
-    clearTimeout(closeDialogTimeoutID.value);
-    closeDialogTimeoutID.value = undefined;
-    dialogAnimationState.value = "show";
+    if (closeDialogTimeoutID.value !== undefined) {
+      clearTimeout(closeDialogTimeoutID.value);
+      closeDialogTimeoutID.value = undefined;
+      dialogAnimationState.value = "show";
+    }
   });
 
   const handleClickOutsideClose = $(async (event: Event) => {
@@ -359,51 +405,59 @@ export const CustomTooltip = component$((props: Props) => {
     onOpen$?.();
   });
 
+  // eslint-disable-next-line qwik/no-use-visible-task
   useVisibleTask$(async ({ track, cleanup }) => {
     const shouldDialogOpen = track(() => open.value);
 
     if (shouldDialogOpen) {
       await cancelDialogClose();
       await scheduleDialogOpen();
+
+      cleanup(async () => {
+        await cancelDialogOpen();
+      });
     } else {
       await cancelDialogOpen();
-      if (dialogIsOpenLocalState) {
+      if (dialogIsOpenLocalState.value) {
         await scheduleDialogClose();
+
+        cleanup(async () => {
+          await cancelDialogClose();
+        });
       }
     }
-
-    cleanup(async () => {
-      await cancelDialogClose();
-      await cancelDialogOpen();
-    });
   });
 
+  // eslint-disable-next-line qwik/no-use-visible-task
   useVisibleTask$(({ track, cleanup }) => {
     const isDialogOpen = track(() => dialogIsOpenLocalState.value);
 
     if (isDialogOpen && triggerActions.includes("click")) {
       window.addEventListener("click", handleClickOutsideClose);
-    }
 
-    cleanup(() => {
-      if (triggerActions.includes("click")) {
-        window.removeEventListener("click", handleClickOutsideClose);
-      }
-    });
+      cleanup(() => {
+        if (triggerActions.includes("click")) {
+          window.removeEventListener("click", handleClickOutsideClose);
+        }
+      });
+    }
   });
 
+  // eslint-disable-next-line qwik/no-use-visible-task
   useVisibleTask$(({ track, cleanup }) => {
     const isDialogOpen = track(() => dialogIsOpenLocalState.value);
 
-    const scrollableContainerElement =
-      getScrollableContainer(scrollableContainer);
     if (isDialogOpen) {
+      const scrollableContainerElement = scrollableContainer ?? document;
       scrollableContainerElement.addEventListener("scroll", positionDialog);
-    }
 
-    cleanup(() => {
-      scrollableContainerElement.removeEventListener("scroll", positionDialog);
-    });
+      cleanup(() => {
+        scrollableContainerElement.removeEventListener(
+          "scroll",
+          positionDialog
+        );
+      });
+    }
   });
 
   const handleRelativeElementMouseOrFocusLeave = $((event: MouseEvent) => {
@@ -475,35 +529,9 @@ export const CustomTooltip = component$((props: Props) => {
         style={{
           ...dialogPositionStyle.value,
           maxWidth: dialogPositionStyle.maxWidth,
-          "--dialog-offset": `${dialogOffset - arrowSize}px`,
-          "--close-timeout": `${closeTimeout}ms`,
-          ...(arrow
-            ? {
-                "--arrow-size": `${arrowSize}px`,
-                ...(() => {
-                  const { x, y, width, height } =
-                    relativeElementRef.value?.getBoundingClientRect() ?? {};
-
-                  return {
-                    "--relative-x": `${x}px`,
-                    "--relative-y": `${y}px`,
-                    "--relative-width": `${width}px`,
-                    "--relative-height": `${height}px`,
-                  };
-                })(),
-                ...(() => {
-                  const { x, y, width, height } =
-                    dialogRef.value?.getBoundingClientRect() ?? {};
-
-                  return {
-                    "--dialog-x": `${x}px`,
-                    "--dialog-y": `${y}px`,
-                    "--dialog-width": `${width}px`,
-                    "--dialog-height": `${height}px`,
-                  };
-                })(),
-              }
-            : {}),
+          "--dialog-offset": `${dialogOffset}px`,
+          "--close-timeout": `${leaveDelay}ms`,
+          "--arrow-size": `${arrowSize}px`,
         }}
         onMouseEnter$={
           triggerActions.includes("hover")

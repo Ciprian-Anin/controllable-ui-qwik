@@ -1,6 +1,5 @@
 import { component$, useSignal, useStyles$ } from "@builder.io/qwik";
 
-import { Counter } from "./components/counter/counter";
 import { Logo } from "./components/logo/logo";
 import { TooltipDemo } from "./demo/TooltipDemo/TooltipDemo";
 import { TooltipWithCloseActionDemo } from "./demo/TooltipWithCloseActionDemo";
@@ -22,11 +21,9 @@ const placements = [
   "right-end",
 ] as const;
 
-const loremIpsumLongText = false
-  ? `Lorem ipsum dolor sit amet, consectetur adipiscing elit. Praesent volutpat justo id libero mollis, at pharetra ligula eleifend. Integer gravida euismod massa, vel volutpat sapien tincidunt id. Phasellus nec lectus suscipit, lacinia lacus ac, vehicula orci. Suspendisse potenti. Mauris sit amet tincidunt libero. Nulla facilisi. Proin eget erat nec metus tempor aliquam non non lectus. Curabitur suscipit, ligula at pretium sollicitudin, lorem orci dictum odio, ut feugiat lacus justo sit amet est.
+const loremIpsumLongText = `Lorem ipsum dolor sit amet, consectetur adipiscing elit. Praesent volutpat justo id libero mollis, at pharetra ligula eleifend. Integer gravida euismod massa, vel volutpat sapien tincidunt id. Phasellus nec lectus suscipit, lacinia lacus ac, vehicula orci. Suspendisse potenti. Mauris sit amet tincidunt libero. Nulla facilisi. Proin eget erat nec metus tempor aliquam non non lectus. Curabitur suscipit, ligula at pretium sollicitudin, lorem orci dictum odio, ut feugiat lacus justo sit amet est.
 
-Aenean laoreet accumsan nulla, nec vehicula orci venenatis nec. Donec sollicitudin arcu nec urna tincidunt, id convallis eros tempus. In pharetra ipsum et sollicitudin aliquam. Pellentesque a nisi nunc. Nulla facilisi. Vivamus sed lorem a lorem scelerisque fermentum. Sed lacinia orci quis libero gravida, at pretium sem sollicitudin. Ut id magna vitae est dignissim sodales. Etiam et malesuada mi, sed tempor lacus.`
-  : "";
+Aenean laoreet accumsan nulla, nec vehicula orci venenatis nec. Donec sollicitudin arcu nec urna tincidunt, id convallis eros tempus. In pharetra ipsum et sollicitudin aliquam. Pellentesque a nisi nunc. Nulla facilisi. Vivamus sed lorem a lorem scelerisque fermentum. Sed lacinia orci quis libero gravida, at pretium sem sollicitudin. Ut id magna vitae est dignissim sodales. Etiam et malesuada mi, sed tempor lacus.`;
 
 export default component$(() => {
   useStyles$(RootStyle);
@@ -43,7 +40,12 @@ export default component$(() => {
         class="QwikTooltipDemo-rootContainer"
       >
         <Logo />
-        <Counter />
+
+        <h1>Basic Tooltip Demo</h1>
+        <TooltipDemo preferredPlacement="bottom" placementStrategy="default">
+          <button q:slot="relative-element">🎉</button>
+          <div q:slot="message">Tada</div>
+        </TooltipDemo>
 
         <h1>Qwik Tooltip With Close Action Demo </h1>
         <TooltipWithCloseActionDemo
@@ -286,7 +288,7 @@ export default component$(() => {
                     placementStrategy="default"
                     preferredPlacement={placements[i % placements.length]}
                     scrollableContainer={scrollableContainerRef.value}
-                    openTimeout={100}
+                    enterDelay={100}
                   >
                     <button
                       q:slot="relative-element"

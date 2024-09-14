@@ -1,10 +1,10 @@
 import { $, component$, Slot, useSignal } from "@builder.io/qwik";
 
-import { CustomTooltip } from "../../components/CustomTooltip";
+import { Tooltip } from "../../components/Tooltip";
 import {
   DefaultStrategyProps,
   KeepCurrentPlacementStrategyProps,
-} from "../../components/CustomTooltip/CustomTooltip";
+} from "../../components/Tooltip/Tooltip";
 
 export const TooltipDemo = component$(
   (
@@ -23,7 +23,7 @@ export const TooltipDemo = component$(
     });
 
     return (
-      <CustomTooltip
+      <Tooltip
         {...props}
         open={dialogIsOpen}
         onOpen$={handleOpen$}
@@ -35,7 +35,7 @@ export const TooltipDemo = component$(
         <span q:slot="message">
           <Slot name="message" />
         </span>
-      </CustomTooltip>
+      </Tooltip>
     );
   }
 );
