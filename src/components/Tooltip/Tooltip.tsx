@@ -142,6 +142,9 @@ export const Tooltip = component$((props: Props) => {
   } = props;
   const arrowSize = arrow ? 12 : 0;
   const tooltipId = useId();
+  const bridgeSize = arrow
+    ? dialogOffset - arrowSize / 2 + arrowSize
+    : dialogOffset;
 
   useStyles$(TooltipStyle);
 
@@ -168,10 +171,12 @@ export const Tooltip = component$((props: Props) => {
       dialogRef.value &&
       relativeElementRef.value
     ) {
-      // remove maxHeight & maxWidth to compute availableSize properly
-      dialogPositionStyle.maxHeight = "";
-      dialogPositionStyle.maxWidth = "";
-      await nextTickRender(); // wait to have dialog rendered without maxHeight & maxWidth
+      // #region This seems to be no longer needed
+      // // remove maxHeight & maxWidth to compute availableSize properly
+      // dialogPositionStyle.maxHeight = "";
+      // dialogPositionStyle.maxWidth = "";
+      // await nextTickRender(); // wait to have dialog rendered without maxHeight & maxWidth
+      // #endregion
 
       // compute placement of dialog using the dialogRef which doesn't include bridge,
       // which is unknown before knowing the next dialog placement.
@@ -183,14 +188,12 @@ export const Tooltip = component$((props: Props) => {
               dialogElement: dialogRef.value,
               relativeElement: relativeElementRef.value,
               currentPlacement: dialogPositionStyle.currentPlacement,
-              dialogOffset: 0,
               ...props.dialogMinMaxSizes,
             })
           : getAvailablePlacementFromTheOnesToBeTried(
               orderOfPlacementsToBeTried,
               dialogRef.value,
-              relativeElementRef.value,
-              0 // dialogOffset
+              relativeElementRef.value
             );
 
       if (availablePosition.type === "partial-size-available") {
@@ -209,7 +212,7 @@ export const Tooltip = component$((props: Props) => {
           case "bottom-end":
             // Note: maxHeight will be set on .QwikUiTooltip-tooltip
             dialogPositionStyle.maxHeight = `${
-              availablePosition.availableSize - dialogOffset
+              availablePosition.availableSize - bridgeSize
             }px`;
             break;
           case "left-start":
@@ -495,15 +498,14 @@ export const Tooltip = component$((props: Props) => {
             ? handleRelativeElementMouseOrFocusLeave
             : undefined
         }
-        onFocus$={
+        onFocusIn$={
           triggerActions.includes("focus") ? handleOpenAction : undefined
         }
-        onBlur$={
+        onFocusOut$={
           triggerActions.includes("focus")
             ? handleRelativeElementMouseOrFocusLeave
             : undefined
         }
-        tabIndex={triggerActions.includes("focus") ? 0 : undefined}
         onClick$={
           triggerActions.includes("click") ? handleOpenAction : undefined
         }
@@ -550,8 +552,7 @@ export const Tooltip = component$((props: Props) => {
         <div
           class="QwikUiTooltip-inner-dialog-with-bridge"
           ref={dialogRef}
-          tabIndex={triggerActions.includes("focus") ? 0 : undefined}
-          onFocusout$={
+          onFocusOut$={
             triggerActions.includes("focus")
               ? handleMouseOrFocusLeaveDialog
               : undefined

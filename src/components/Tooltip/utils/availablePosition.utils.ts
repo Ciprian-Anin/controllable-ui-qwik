@@ -22,7 +22,6 @@ export function getDialogAvailablePositionConsideringKeepingCurrentPlacement({
   currentPlacement,
   dialogElement,
   relativeElement,
-  dialogOffset,
   dialogMaxHeight = Infinity,
   dialogMinHeight = 0,
   dialogMaxWidth = Infinity,
@@ -30,12 +29,11 @@ export function getDialogAvailablePositionConsideringKeepingCurrentPlacement({
 }: {
   placementsToBeTried: [
     preferredPlacement: Placement,
-    ...restOfPlacements: Placement[],
+    ...restOfPlacements: Placement[]
   ];
   currentPlacement: Placement | undefined;
   dialogElement: HTMLElement;
   relativeElement: HTMLElement;
-  dialogOffset: number;
   dialogMaxHeight?: number;
   dialogMinHeight?: number;
   dialogMaxWidth?: number;
@@ -51,8 +49,7 @@ export function getDialogAvailablePositionConsideringKeepingCurrentPlacement({
         ? getAvailablePlacementFromTheOnesToBeTried(
           placementsToBeTried,
           dialogElement,
-          relativeElement,
-          dialogOffset
+          relativeElement
         )
         : maxAvailableSpaceOnTop > dialogMaxHeight
           ? {
@@ -75,8 +72,7 @@ export function getDialogAvailablePositionConsideringKeepingCurrentPlacement({
         ? getAvailablePlacementFromTheOnesToBeTried(
           placementsToBeTried,
           dialogElement,
-          relativeElement,
-          dialogOffset
+          relativeElement
         )
         : maxAvailableSpaceOnBottom > dialogMaxHeight
           ? {
@@ -99,8 +95,7 @@ export function getDialogAvailablePositionConsideringKeepingCurrentPlacement({
         ? getAvailablePlacementFromTheOnesToBeTried(
           placementsToBeTried,
           dialogElement,
-          relativeElement,
-          dialogOffset
+          relativeElement
         )
         : maxAvailableSpaceOnLeft > dialogMaxWidth
           ? {
@@ -123,8 +118,7 @@ export function getDialogAvailablePositionConsideringKeepingCurrentPlacement({
         ? getAvailablePlacementFromTheOnesToBeTried(
           placementsToBeTried,
           dialogElement,
-          relativeElement,
-          dialogOffset
+          relativeElement
         )
         : maxAvailableSpaceOnRight > dialogMaxWidth
           ? {
@@ -141,8 +135,7 @@ export function getDialogAvailablePositionConsideringKeepingCurrentPlacement({
       return getAvailablePlacementFromTheOnesToBeTried(
         placementsToBeTried,
         dialogElement,
-        relativeElement,
-        dialogOffset
+        relativeElement
       );
     }
   }
@@ -151,11 +144,10 @@ export function getDialogAvailablePositionConsideringKeepingCurrentPlacement({
 export function getAvailablePlacementFromTheOnesToBeTried(
   placementsToBeTried: [
     preferredPlacement: Placement,
-    ...restOfPlacements: Placement[],
+    ...restOfPlacements: Placement[]
   ],
   dialogElement: HTMLElement,
-  relativeElement: HTMLElement,
-  dialogOffset: number
+  relativeElement: HTMLElement
 ) {
   const dialogElementRect = dialogElement.getBoundingClientRect();
   const relativeElementRect = relativeElement.getBoundingClientRect();
@@ -166,26 +158,26 @@ export function getAvailablePlacementFromTheOnesToBeTried(
         case "top-start":
         case "top":
         case "top-end": {
-          return relativeElementRect.top - (dialogElementRect.height + dialogOffset) >= 0;
+          return relativeElementRect.top - dialogElementRect.height >= 0;
         }
         case "bottom-start":
         case "bottom":
         case "bottom-end": {
           return (
-            relativeElementRect.bottom + (dialogElementRect.height + dialogOffset) <=
+            relativeElementRect.bottom + dialogElementRect.height <=
             getDocumentHeight()
           );
         }
         case "left-start":
         case "left":
         case "left-end": {
-          return relativeElementRect.left - (dialogElementRect.width + dialogOffset) >= 0;
+          return relativeElementRect.left - dialogElementRect.width >= 0;
         }
         case "right-start":
         case "right":
         case "right-end": {
           return (
-            relativeElementRect.right + (dialogElementRect.width + dialogOffset) <=
+            relativeElementRect.right + dialogElementRect.width <=
             getDocumentWidth()
           );
         }
@@ -209,7 +201,7 @@ export function getAvailablePlacementFromTheOnesToBeTried(
 function getMaxPartialAvailableSpace(
   placementsToBeTried: [
     preferredPlacement: Placement,
-    ...restOfPlacements: Placement[],
+    ...restOfPlacements: Placement[]
   ],
   relativeElement: HTMLElement
 ) {

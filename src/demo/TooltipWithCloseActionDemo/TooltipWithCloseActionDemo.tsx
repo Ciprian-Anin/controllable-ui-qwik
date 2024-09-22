@@ -1,10 +1,14 @@
-import { $, component$, useSignal } from "@builder.io/qwik";
+import {
+  $,
+  component$,
+  useSignal,
+} from '@builder.io/qwik';
 
-import { Tooltip } from "../../components/Tooltip";
+import { Tooltip } from '../../components/Tooltip';
 import {
   DefaultStrategyProps,
   KeepCurrentPlacementStrategyProps,
-} from "../../components/Tooltip/Tooltip";
+} from '../../components/Tooltip/Tooltip';
 
 export const TooltipWithCloseActionDemo = component$(
   (
@@ -13,12 +17,19 @@ export const TooltipWithCloseActionDemo = component$(
       | Omit<KeepCurrentPlacementStrategyProps, "open" | "onOpen$" | "onClose$">
   ) => {
     const dialogIsOpen = useSignal(false);
+    const leaveDelay = useSignal(300);
 
     const handleOpen$ = $(() => {
       dialogIsOpen.value = true;
     });
 
     const handleClose$ = $(() => {
+      leaveDelay.value = 300;
+      dialogIsOpen.value = false;
+    });
+
+    const handleClickCloseButton$ = $(() => {
+      leaveDelay.value = 0;
       dialogIsOpen.value = false;
     });
 
@@ -28,7 +39,7 @@ export const TooltipWithCloseActionDemo = component$(
         open={dialogIsOpen}
         onOpen$={handleOpen$}
         onClose$={handleClose$}
-        leaveDelay={500}
+        leaveDelay={leaveDelay.value}
       >
         <button q:slot="relative-element">HTML</button>
         <span q:slot="message">
@@ -45,7 +56,7 @@ export const TooltipWithCloseActionDemo = component$(
             </span>
             <svg
               style={{ cursor: "pointer" }}
-              onClick$={handleClose$}
+              onClick$={handleClickCloseButton$}
               xmlns="http://www.w3.org/2000/svg"
               height="24px"
               viewBox="0 -960 960 960"

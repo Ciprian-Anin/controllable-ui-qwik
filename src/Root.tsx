@@ -1,14 +1,10 @@
-import {
-  component$,
-  useSignal,
-  useStyles$,
-} from '@builder.io/qwik';
+import { component$, useSignal, useStyles$ } from "@builder.io/qwik";
 
-import { Logo } from './components/logo/logo';
-import { TooltipDemo } from './demo/TooltipDemo/TooltipDemo';
-import { TooltipWithCloseActionDemo } from './demo/TooltipWithCloseActionDemo';
-import RootStyle from './Root.scss?inline';
-import { TableWithTooltipsDemo } from './TableWithTooltipsDemo';
+import { Logo } from "./components/logo/logo";
+import { TooltipDemo } from "./demo/TooltipDemo/TooltipDemo";
+import { TooltipWithCloseActionDemo } from "./demo/TooltipWithCloseActionDemo";
+import RootStyle from "./Root.scss?inline";
+import { TableWithTooltipsDemo } from "./TableWithTooltipsDemo";
 
 const placements = [
   "top-start",
