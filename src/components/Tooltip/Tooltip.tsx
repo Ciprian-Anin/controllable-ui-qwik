@@ -2,6 +2,7 @@ import {
   $,
   component$,
   CSSProperties,
+  isServer,
   QRL,
   Signal,
   Slot,
@@ -9,22 +10,22 @@ import {
   useSignal,
   useStore,
   useStyles$,
-  useVisibleTask$,
-} from "@builder.io/qwik";
+  useTask$,
+} from '@builder.io/qwik';
 
-import { TooltipArrow } from "./components/TooltipArrow";
-import TooltipStyle from "./Tooltip.scss?inline";
-import { Placement } from "./types";
+import { TooltipArrow } from './components/TooltipArrow';
+import TooltipStyle from './Tooltip.scss?inline';
+import { Placement } from './types';
 import {
   getAvailablePlacementFromTheOnesToBeTried,
   getDialogAvailablePositionConsideringKeepingCurrentPlacement,
-} from "./utils/availablePosition.utils";
-import { getDialogPositionStyle } from "./utils/positionStyle.utils";
+} from './utils/availablePosition.utils';
+import { getDialogPositionStyle } from './utils/positionStyle.utils';
 import {
   getElementVisibleBoundingClientRectInsideScrollableContainer,
   getScrollableContainer,
   nextTickRender,
-} from "./utils/utils";
+} from './utils/utils';
 
 export const defaultOrderOfPlacementsToBeTried: {
   [key in Placement]: [
@@ -50,6 +51,9 @@ export const defaultOrderOfPlacementsToBeTried: {
 };
 
 type BaseProps = {
+  id: string;
+  relativeElementRef: Signal<HTMLElement | undefined>;
+  dialogWithBridgeRef: Signal<HTMLElement | undefined>;
   open: Signal<boolean>;
   onOpen$?: QRL<() => void>;
   onClose$?: QRL<() => void>;
@@ -115,6 +119,73 @@ export type DefaultStrategyProps = BaseProps & {
 
 export type Props = DefaultStrategyProps | KeepCurrentPlacementStrategyProps;
 
+const getDialogWithBridgeStyle = (
+  dialogPositionStyle: {
+    currentPlacement?: Placement;
+    value: CSSProperties;
+    maxHeight: string;
+    maxWidth: string;
+  },
+  dialogOffset: number,
+  leaveDelay: number,
+  arrowSize: number
+) => {
+  return {
+    ...dialogPositionStyle.value,
+    maxWidth: dialogPositionStyle.maxWidth,
+    "--dialog-offset": `${dialogOffset}px`,
+    "--close-timeout": `${leaveDelay}ms`,
+    "--arrow-size": `${arrowSize}px`,
+  };
+};
+
+const getDialogWithBridgeClass = (
+  tooltipRootClass: string | undefined,
+  dialogPositionStyle: {
+    currentPlacement?: Placement;
+    value: CSSProperties;
+    maxHeight: string;
+    maxWidth: string;
+  },
+  dialogAnimationState: "initial" | "hide" | "show"
+) => {
+  return [
+    tooltipRootClass ?? "",
+    "QwikUiTooltip-dialog-with-bridge",
+    dialogPositionStyle.currentPlacement
+      ? `QwikUiTooltip-placement-${dialogPositionStyle.currentPlacement}`
+      : "",
+    dialogAnimationState === "initial" ? "QwikUiTooltip-initial" : "",
+    dialogAnimationState === "show" ? "QwikUiTooltip-show" : "",
+    dialogAnimationState === "hide" ? "QwikUiTooltip-hide" : "",
+  ];
+};
+
+const updateDialogWithBridgeStyle = (
+  dialogWithBridgeRef: Signal<HTMLElement | undefined>,
+  dialogPositionStyle: {
+    currentPlacement?: Placement;
+    value: CSSProperties;
+    maxHeight: string;
+    maxWidth: string;
+  },
+  dialogOffset: number,
+  leaveDelay: number,
+  arrowSize: number
+) => {
+  if (dialogWithBridgeRef.value) {
+    Object.assign(
+      dialogWithBridgeRef.value.style,
+      getDialogWithBridgeStyle(
+        dialogPositionStyle,
+        dialogOffset,
+        leaveDelay,
+        arrowSize
+      )
+    );
+  }
+};
+
 /**
  * @prop `orderOfPlacementsToBeTried`:
  *   > In case dialog will not have enough space to be positioned in
@@ -123,6 +194,9 @@ export type Props = DefaultStrategyProps | KeepCurrentPlacementStrategyProps;
  */
 export const Tooltip = component$((props: Props) => {
   const {
+    id: tooltipId,
+    relativeElementRef,
+    dialogWithBridgeRef,
     open,
     onOpen$,
     onClose$,
@@ -141,16 +215,14 @@ export const Tooltip = component$((props: Props) => {
     tooltipClass,
   } = props;
   const arrowSize = arrow ? 12 : 0;
-  const tooltipId = useId();
   const bridgeSize = arrow
     ? dialogOffset - arrowSize / 2 + arrowSize
     : dialogOffset;
 
   useStyles$(TooltipStyle);
 
-  const relativeElementRef = useSignal<HTMLElement>();
-  const dialogWithBridgeRef = useSignal<HTMLElement>();
   const dialogRef = useSignal<HTMLElement>();
+  const tooltipRef = useSignal<HTMLElement>();
 
   const dialogIsOpenLocalState = useSignal(open.value);
   const dialogPositionStyle = useStore<{
@@ -211,9 +283,10 @@ export const Tooltip = component$((props: Props) => {
           case "bottom":
           case "bottom-end":
             // Note: maxHeight will be set on .QwikUiTooltip-tooltip
-            dialogPositionStyle.maxHeight = `${
-              availablePosition.availableSize - bridgeSize
-            }px`;
+            dialogPositionStyle.maxHeight = `${availablePosition.availableSize - bridgeSize}px`;
+            if (tooltipRef.value) {
+              tooltipRef.value.style.maxHeight = dialogPositionStyle.maxHeight;
+            }
             break;
           case "left-start":
           case "left":
@@ -223,6 +296,13 @@ export const Tooltip = component$((props: Props) => {
           case "right-end":
             // Note: maxWidth will be set on .QwikUiTooltip-dialog-with-bridge
             dialogPositionStyle.maxWidth = `${availablePosition.availableSize}px`;
+            updateDialogWithBridgeStyle(
+              dialogWithBridgeRef,
+              dialogPositionStyle,
+              dialogOffset,
+              leaveDelay,
+              arrowSize
+            );
             break;
         }
         await nextTickRender(); // wait for new width/height to be rendered,
@@ -231,6 +311,16 @@ export const Tooltip = component$((props: Props) => {
       }
 
       dialogPositionStyle.currentPlacement = availablePosition.placement;
+      if (dialogWithBridgeRef.value) {
+        dialogWithBridgeRef.value.setAttribute(
+          "class",
+          getDialogWithBridgeClass(
+            tooltipRootClass,
+            dialogPositionStyle,
+            dialogAnimationState.value
+          ).join(" ")
+        );
+      }
       await nextTickRender(); // wait for the placement class to be rendered,
       // in order to have the bridge (padding) applied
 
@@ -248,6 +338,13 @@ export const Tooltip = component$((props: Props) => {
         }px`,
         // visibility: "visible",
       };
+      updateDialogWithBridgeStyle(
+        dialogWithBridgeRef,
+        dialogPositionStyle,
+        dialogOffset,
+        leaveDelay,
+        arrowSize
+      );
 
       await nextTickRender(); // wait for the dialog to be rendered on the computed placement
 
@@ -283,6 +380,13 @@ export const Tooltip = component$((props: Props) => {
             }
           : {}),
       };
+      updateDialogWithBridgeStyle(
+        dialogWithBridgeRef,
+        dialogPositionStyle,
+        dialogOffset,
+        leaveDelay,
+        arrowSize
+      );
     }
   });
 
@@ -297,52 +401,58 @@ export const Tooltip = component$((props: Props) => {
     if (open.value) {
       dialogPositionStyle.value = {
         ...dialogPositionStyle.value,
-        visibility: "hidden",
+        visibility: "hidden", // this will be applied on the next qwik render
       };
+      updateDialogWithBridgeStyle(
+        dialogWithBridgeRef,
+        dialogPositionStyle,
+        dialogOffset,
+        leaveDelay,
+        arrowSize
+      );
 
-      await new Promise<void>((resolve, reject) => {
-        openDialogTimeoutID.value = setTimeout(async () => {
-          // ! check again to make sure we open dialog just if external
-          // ! state specify now that the dialog should be opened
-          if (open.value) {
-            try {
-              await nextTickRender(); // wait for dialog to have `visibility: hidden` set
-              // before showing it
-              // This is important in order to avoid the display of it on a position
-              // inappropriate with requested/available placement
-              // * (at this moment we don't have the dialog sizes,
-              // * and it is not positioned on requested/available placement)
+      // @ts-ignore
+      openDialogTimeoutID.value = setTimeout(async () => {
+        // ! check again to make sure we open dialog just if external
+        // ! state specify now that the dialog should be opened
+        if (open.value) {
+          await nextTickRender(); // wait for dialog to have `visibility: hidden` set
+          // before showing it
+          // This is important in order to avoid the display of it on a position
+          // inappropriate with requested/available placement
+          // * (at this moment we don't have the dialog sizes,
+          // * and it is not positioned on requested/available placement)
 
-              const positionDialogAndMakeItVisible = new ResizeObserver(
-                async () => {
-                  try {
-                    await positionDialog();
-                    await positionDialog(); // call a second time to make sure that the size of dialog is computed properly
-                    // (the first time when we call positionDialog the browser doesn't compute the height/width of dialog properly)
-                    dialogPositionStyle.value = {
-                      ...dialogPositionStyle.value,
-                      visibility: "visible",
-                    };
-                    dialogAnimationState.value = "show";
-                    resolve();
-                    positionDialogAndMakeItVisible.disconnect();
-                  } catch {
-                    reject();
-                  }
-                }
-              );
+          // const positionDialogAndMakeItVisible = new ResizeObserver(
+          //   async () => {
+          //     await positionDialog();
+          //     await positionDialog(); // call a second time to make sure that the size of dialog is computed properly
+          //     // (the first time when we call positionDialog the browser doesn't compute the height/width of dialog properly)
+          //     dialogPositionStyle.value = {
+          //       ...dialogPositionStyle.value,
+          //       visibility: "visible",
+          //     };
+          //     dialogAnimationState.value = "show";
+          //     positionDialogAndMakeItVisible.disconnect();
+          //   }
+          // );
 
-              if (dialogRef.value) {
-                positionDialogAndMakeItVisible.observe(dialogRef.value);
-                dialogWithBridgeRef.value?.showPopover();
-                dialogIsOpenLocalState.value = true;
-              }
-            } catch {
-              reject();
-            }
+          if (dialogRef.value) {
+            // positionDialogAndMakeItVisible.observe(dialogRef.value);
+            dialogWithBridgeRef.value?.showPopover();
+            dialogIsOpenLocalState.value = true;
+
+            await positionDialog();
+            // await positionDialog(); // call a second time to make sure that the size of dialog is computed properly
+            // (the first time when we call positionDialog the browser doesn't compute the height/width of dialog properly)
+            dialogPositionStyle.value = {
+              ...dialogPositionStyle.value,
+              visibility: "visible",
+            };
+            dialogAnimationState.value = "show";
           }
-        }, enterDelay);
-      });
+        }
+      }, enterDelay);
     }
   });
 
@@ -363,17 +473,16 @@ export const Tooltip = component$((props: Props) => {
     }
   });
 
-  const scheduleDialogClose = $(async () => {
+  const scheduleDialogClose = $(() => {
     // check again to make sure we close dialog just if external
     // state specify now that the dialog should be closed
     if (!open.value) {
       dialogAnimationState.value = "hide";
 
-      await new Promise<void>((resolve, reject) => {
-        closeDialogTimeoutID.value = setTimeout(() => {
-          closeDialog().then(resolve).catch(reject);
-        }, leaveDelay);
-      });
+      // @ts-ignore
+      closeDialogTimeoutID.value = setTimeout(() => {
+        closeDialog();
+      }, leaveDelay);
     }
   });
 
@@ -404,13 +513,21 @@ export const Tooltip = component$((props: Props) => {
     }
   });
 
-  const handleOpenAction = $(() => {
-    onOpen$?.();
+  useTask$(() => {
+    if (isServer && open.value) {
+      console.warn(
+        "Tooltip cannot be rendered on open state on the server side."
+      );
+    }
   });
 
   // eslint-disable-next-line qwik/no-use-visible-task
-  useVisibleTask$(async ({ track, cleanup }) => {
-    const shouldDialogOpen = track(() => open.value);
+  useTask$(async ({ track, cleanup }) => {
+    const shouldDialogOpen = track(open);
+
+    if (isServer) {
+      return; // Server guard
+    }
 
     if (shouldDialogOpen) {
       await cancelDialogClose();
@@ -423,7 +540,6 @@ export const Tooltip = component$((props: Props) => {
       await cancelDialogOpen();
       if (dialogIsOpenLocalState.value) {
         await scheduleDialogClose();
-
         cleanup(async () => {
           await cancelDialogClose();
         });
@@ -432,8 +548,11 @@ export const Tooltip = component$((props: Props) => {
   });
 
   // eslint-disable-next-line qwik/no-use-visible-task
-  useVisibleTask$(({ track, cleanup }) => {
-    const isDialogOpen = track(() => dialogIsOpenLocalState.value);
+  useTask$(({ track, cleanup }) => {
+    const isDialogOpen = track(dialogIsOpenLocalState);
+    if (isServer) {
+      return; // Server guard
+    }
 
     if (isDialogOpen && triggerActions.includes("click")) {
       window.addEventListener("click", handleClickOutsideClose);
@@ -447,8 +566,12 @@ export const Tooltip = component$((props: Props) => {
   });
 
   // eslint-disable-next-line qwik/no-use-visible-task
-  useVisibleTask$(({ track, cleanup }) => {
-    const isDialogOpen = track(() => dialogIsOpenLocalState.value);
+  useTask$(({ track, cleanup }) => {
+    const isDialogOpen = track(dialogIsOpenLocalState);
+
+    if (isServer) {
+      return; // Server guard
+    }
 
     if (isDialogOpen) {
       const scrollableContainerElement = scrollableContainer ?? document;
@@ -460,15 +583,6 @@ export const Tooltip = component$((props: Props) => {
           positionDialog
         );
       });
-    }
-  });
-
-  const handleRelativeElementMouseOrFocusLeave = $((event: MouseEvent) => {
-    if (
-      dialogWithBridgeRef.value !== event.relatedTarget &&
-      !dialogWithBridgeRef.value?.contains(event.relatedTarget as Node)
-    ) {
-      onClose$?.();
     }
   });
 
@@ -484,93 +598,114 @@ export const Tooltip = component$((props: Props) => {
   );
 
   return (
-    <div>
+    <div
+      class={getDialogWithBridgeClass(
+        tooltipRootClass,
+        dialogPositionStyle,
+        dialogAnimationState.value
+      )}
+      ref={dialogWithBridgeRef}
+      popover="manual"
+      id={tooltipId}
+      role="tooltip"
+      data-dialog-placement={preferredPlacement}
+      style={getDialogWithBridgeStyle(
+        dialogPositionStyle,
+        dialogOffset,
+        leaveDelay,
+        arrowSize
+      )}
+      onMouseEnter$={
+        triggerActions.includes("hover")
+          ? $(async () => {
+              onOpen$?.(); // emit open to parent to make sure it will have open state also
+              await cancelDialogClose();
+            })
+          : undefined
+      }
+      onMouseLeave$={
+        triggerActions.includes("hover")
+          ? handleMouseOrFocusLeaveDialog
+          : undefined
+      }
+    >
       <div
-        ref={relativeElementRef}
-        class="QwikUiTooltip-relative-element"
-        // @ts-ignore
-        popovertarget={tooltipId}
-        onMouseEnter$={
-          triggerActions.includes("hover") ? handleOpenAction : undefined
-        }
-        onMouseLeave$={
-          triggerActions.includes("hover")
-            ? handleRelativeElementMouseOrFocusLeave
-            : undefined
-        }
-        onFocusIn$={
-          triggerActions.includes("focus") ? handleOpenAction : undefined
-        }
+        class="QwikUiTooltip-inner-dialog-with-bridge"
+        ref={dialogRef}
         onFocusOut$={
           triggerActions.includes("focus")
-            ? handleRelativeElementMouseOrFocusLeave
-            : undefined
-        }
-        onClick$={
-          triggerActions.includes("click") ? handleOpenAction : undefined
-        }
-      >
-        <Slot name="relative-element" />
-      </div>
-      <div
-        class={[
-          tooltipRootClass,
-          "QwikUiTooltip-dialog-with-bridge",
-          dialogPositionStyle.currentPlacement &&
-            `QwikUiTooltip-placement-${dialogPositionStyle.currentPlacement}`,
-          dialogAnimationState.value === "initial" && "QwikUiTooltip-initial",
-          dialogAnimationState.value === "show" && "QwikUiTooltip-show",
-          dialogAnimationState.value === "hide" && "QwikUiTooltip-hide",
-        ]}
-        ref={dialogWithBridgeRef}
-        // @ts-ignore
-        popover="manual"
-        id={tooltipId}
-        role="tooltip"
-        data-dialog-placement={preferredPlacement}
-        style={{
-          ...dialogPositionStyle.value,
-          maxWidth: dialogPositionStyle.maxWidth,
-          "--dialog-offset": `${dialogOffset}px`,
-          "--close-timeout": `${leaveDelay}ms`,
-          "--arrow-size": `${arrowSize}px`,
-        }}
-        onMouseEnter$={
-          triggerActions.includes("hover")
-            ? $(async () => {
-                onOpen$?.(); // emit open to parent to make sure it will have open state also
-                await cancelDialogClose();
-              })
-            : undefined
-        }
-        onMouseLeave$={
-          triggerActions.includes("hover")
             ? handleMouseOrFocusLeaveDialog
             : undefined
         }
       >
-        <div
-          class="QwikUiTooltip-inner-dialog-with-bridge"
-          ref={dialogRef}
-          onFocusOut$={
-            triggerActions.includes("focus")
-              ? handleMouseOrFocusLeaveDialog
-              : undefined
-          }
-        >
-          <div class="QwikUiTooltip-animated-inner-dialog-with-bridge">
-            <div
-              class={["QwikUiTooltip-tooltip", tooltipClass]}
-              style={{
-                maxHeight: dialogPositionStyle.maxHeight,
-              }}
-            >
-              <Slot name="message" />
-            </div>
-            {arrow && <TooltipArrow arrowSize={arrowSize} />}
+        <div class="QwikUiTooltip-animated-inner-dialog-with-bridge">
+          <div
+            ref={tooltipRef}
+            class={["QwikUiTooltip-tooltip", tooltipClass]}
+            style={{
+              maxHeight: dialogPositionStyle.maxHeight,
+            }}
+          >
+            <Slot name="message" />
           </div>
+          {arrow && <TooltipArrow arrowSize={arrowSize} />}
         </div>
       </div>
     </div>
   );
 });
+
+export function useTooltipRelativeElement({
+  triggerActions,
+  onOpen$,
+  onClose$,
+}: {
+  triggerActions: NonNullable<BaseProps["triggerActions"]>;
+  onOpen$?: BaseProps["onOpen$"];
+  onClose$?: BaseProps["onClose$"];
+}) {
+  const tooltipId = useId();
+
+  const relativeElementRef = useSignal<HTMLElement>();
+  const dialogWithBridgeRef = useSignal<HTMLElement>();
+
+  const handleOpenAction = $(() => {
+    onOpen$?.();
+  });
+
+  const handleRelativeElementMouseOrFocusLeave = $((event: MouseEvent) => {
+    if (
+      dialogWithBridgeRef.value !== event.relatedTarget &&
+      !dialogWithBridgeRef.value?.contains(event.relatedTarget as Node)
+    ) {
+      onClose$?.();
+    }
+  });
+
+  return {
+    tooltipId,
+    dialogProps: {
+      dialogWithBridgeRef,
+    },
+    relativeElementProps: {
+      ref: relativeElementRef,
+      onMouseEnter$: triggerActions.includes("hover")
+        ? handleOpenAction
+        : undefined,
+
+      onMouseLeave$: triggerActions.includes("hover")
+        ? handleRelativeElementMouseOrFocusLeave
+        : undefined,
+
+      onFocusIn$: triggerActions.includes("focus")
+        ? handleOpenAction
+        : undefined,
+
+      onFocusOut$: triggerActions.includes("focus")
+        ? handleRelativeElementMouseOrFocusLeave
+        : undefined,
+
+      onClick$: triggerActions.includes("click") ? handleOpenAction : undefined,
+    },
+  };
+}

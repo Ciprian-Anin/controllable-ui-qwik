@@ -1,7 +1,8 @@
 export const getDocumentWidth = () => document.documentElement.clientWidth;
 export const getDocumentHeight = () => document.documentElement.clientHeight;
-export const nextTickRender = () =>
-  new Promise((resolve) => setTimeout(resolve));
+export const nextTickRender = async () => {
+  await new Promise((resolve) => setTimeout(() => requestAnimationFrame(resolve)));
+}
 
 export function getScrollableContainer(scrollableContainer?: HTMLElement) {
   return scrollableContainer ?? document.documentElement;
